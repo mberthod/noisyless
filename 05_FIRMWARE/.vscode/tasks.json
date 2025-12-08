@@ -1,0 +1,36 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build Firmware",
+      "type": "shell",
+      "command": "platformio",
+      "args": [
+        "run"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Deploy Firmware",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "${workspaceFolder}/Deploy-Firmware.py",
+        "${workspaceFolder}/.pio/build/esp32-s3-devkitc-1/firmware.bin"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Build and Deploy Firmware",
+      "dependsOn": [
+        "Build Firmware",
+        "Deploy Firmware"
+      ],
+      "dependsOrder": "sequence"
+    }
+  ]
+}
