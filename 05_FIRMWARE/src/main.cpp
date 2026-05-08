@@ -343,50 +343,101 @@ return true;
 }
 
 // ------------------------------------------------
-// Initialisation du LD2410 sur Serial1 @256000
+// Initialisation du LD2410 - parser custom (lib bypass)
 bool initLD2410() {
-  RadarSerial.begin(256000, SERIAL_8N1, PIN_LD2410_RX_ESP, PIN_LD2410_TX_ESP);
-  delay(50);
-  if (radar.begin(RadarSerial)) {
-    Serial.println("[LD2410] Initialisé");
-    return true;
+  static bool serial_started = false;
+  if (!serial_started) {
+    RadarSerial.begin(256000, SERIAL_8N1, PIN_LD2410_RX_ESP, PIN_LD2410_TX_ESP);
+    serial_started = true;
+    Serial.println("[LD2410] UART @256000 baud, parser custom");
   }
-  Serial.println("[LD2410] Introuvable / non initialisé");
-  return false;
+  return true; // Toujours OK, on parse directement les frames
+}
+
+// Parser custom LD2410 - lit les frames F4F3F2F1...F8F7F6F5
+// Frame target data (cyclic mode):
+//   F4 F3 F2 F1 | LL LL | 02 AA | STATE | MD_L MD_H | ME | SD_L SD_H | SE | DD_L DD_H | 55 | CK | F8 F7 F6 F5
+// STATE: 0=none, 1=moving, 2=stationary, 3=both
+static struct {
+  bool valid;
+  uint8_t state;
+  uint16_t moving_dist_cm;
+  uint8_t moving_energy;
+  uint16_t still_dist_cm;
+  uint8_t still_energy;
+  uint16_t detection_dist_cm;
+  unsigned long last_update_ms;
+} g_ld_data = {};
+
+void parseLD2410Stream() {
+  static uint8_t buf[64];
+  static size_t pos = 0;
+  static const uint8_t HDR[4] = {0xF4, 0xF3, 0xF2, 0xF1};
+
+  while (RadarSerial.available()) {
+    uint8_t b = RadarSerial.read();
+    if (pos < sizeof(buf)) buf[pos++] = b;
+
+    // Cherche le header
+    if (pos < 4) continue;
+    if (memcmp(buf, HDR, 4) != 0) {
+      // shift left
+      memmove(buf, buf + 1, pos - 1);
+      pos--;
+      continue;
+    }
+    // On a le header. Attendre au moins 6 bytes pour lire la longueur.
+    if (pos < 6) continue;
+    uint16_t len = buf[4] | (buf[5] << 8);
+    size_t total = 4 + 2 + len + 4; // header + len + payload + footer
+    if (total > sizeof(buf)) { pos = 0; continue; } // trop grand, reset
+    if (pos < total) continue;
+
+    // Verifier footer
+    if (buf[total-4] == 0xF8 && buf[total-3] == 0xF7 &&
+        buf[total-2] == 0xF6 && buf[total-1] == 0xF5) {
+      // Frame complete - parser type 02 AA (target data)
+      if (len >= 11 && buf[6] == 0x02 && buf[7] == 0xAA) {
+        g_ld_data.state             = buf[8];
+        g_ld_data.moving_dist_cm    = buf[9]  | (buf[10] << 8);
+        g_ld_data.moving_energy     = buf[11];
+        g_ld_data.still_dist_cm     = buf[12] | (buf[13] << 8);
+        g_ld_data.still_energy      = buf[14];
+        g_ld_data.detection_dist_cm = buf[15] | (buf[16] << 8);
+        g_ld_data.valid = true;
+        g_ld_data.last_update_ms = millis();
+      }
+    }
+    // Avancer apres ce frame (qu'il soit valide ou non)
+    if (pos > total) memmove(buf, buf + total, pos - total);
+    pos = (pos > total) ? pos - total : 0;
+  }
 }
 
 
 // ------------------------------------------------
-// Lecture LD2410. presence=true si mouvement ou présence stationnaire.
+// Lecture LD2410 via parser custom. presence=true si mouvement ou stationnaire.
 bool readLD2410(bool& presence, uint16_t& distance_cm) {
-  if (!g_ld_ok) {
+  parseLD2410Stream();
+
+  // Si pas de frame recu depuis 2s, considere offline
+  if (!g_ld_data.valid || (millis() - g_ld_data.last_update_ms > 2000)) {
     presence = false;
     distance_cm = 0;
     return false;
   }
-  // Met à jour les trames du radar
-  radar.read();
 
-  bool motion = radar.movingTargetDetected();
-  bool still = radar.stationaryTargetDetected();
+  bool motion = (g_ld_data.state & 0x01) != 0;
+  bool still  = (g_ld_data.state & 0x02) != 0;
   presence = motion || still;
 
-  uint16_t dMoving = radar.movingTargetDistance();
-  uint16_t dStill = radar.stationaryTargetDistance();
-
-  if (presence) {
-    // Choix de la distance la plus pertinente: privilégie mouvement sinon stationnaire
-    if (motion && dMoving > 0) {
-      distance_cm = dMoving;
-    } else if (still && dStill > 0) {
-      distance_cm = dStill;
-    } else {
-      distance_cm = 0;
-    }
+  if (motion && g_ld_data.moving_dist_cm > 0) {
+    distance_cm = g_ld_data.moving_dist_cm;
+  } else if (still && g_ld_data.still_dist_cm > 0) {
+    distance_cm = g_ld_data.still_dist_cm;
   } else {
-    distance_cm = 0;
+    distance_cm = g_ld_data.detection_dist_cm;
   }
-
   return true;
 }
 
@@ -846,11 +897,18 @@ void setup() {
     "task_adc",
     4096, nullptr, 1, nullptr, 1);
 
-  // Tâche RADAR LD2410
+  // Tache RADAR LD2410 (avec re-essai d'init si echec au boot)
   xTaskCreatePinnedToCore(
     [](void*) {
+      unsigned long lastInitTry = 0;
       for (;;) {
-        if (g_ld_ok) {
+        if (!g_ld_ok) {
+          unsigned long now = millis();
+          if (now - lastInitTry >= 5000UL) {
+            lastInitTry = now;
+            g_ld_ok = initLD2410();
+          }
+        } else {
           bool pres; uint16_t dist;
           readLD2410(pres, dist);
           if (g_sharedMutex && xSemaphoreTake(g_sharedMutex, pdMS_TO_TICKS(5)) == pdTRUE) {
