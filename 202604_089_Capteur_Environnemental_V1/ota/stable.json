@@ -1,0 +1,7 @@
+{
+  "version": "1.0.2",
+  "min_version": "1.0.0",
+  "url": "https://github.com/mberthod/noisyless/releases/download/v1.0.2/firmware.bin",
+  "changelog": "OTA forced at boot + MQTT working",
+  "hash": "sha256:56f3e7d680d25933c3eb927efce9297ff88392a375f10b2e5550d89af1a1f64c"
+}

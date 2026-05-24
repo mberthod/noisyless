@@ -1,0 +1,7 @@
+03_CAO/**-backups/**
+03_CAO/**/_autosave-*
+03_CAO/**/~*.lck
+*.zip
+*.pptx
+*.pptm
+*.pdf
