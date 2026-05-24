@@ -47,7 +47,7 @@ static const unsigned long SENSOR_ADC_WINDOW_MS = 50UL;
 static const unsigned long RADAR_READ_PERIOD_MS = 100UL;
 static const unsigned long OTA_CHECK_INTERVAL_MS = 3600000UL; // 1h
 // Manifest OTA (canal: stable)
-static const char* OTA_MANIFEST_URL = "https://raw.githubusercontent.com/mberthod/202411_Projet_029___EnvironnementalSensor/noisyless_ws/ota/stable.json";
+static const char* OTA_MANIFEST_URL = "https://raw.githubusercontent.com/mberthod/noisyless/main/ota/stable.json";
 static const char* OTA_USER_AGENT = "Noisyless-ESP32";
 
 // -------------------- Objets globaux --------------------
