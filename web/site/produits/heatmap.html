@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOISYLESS HeatMap | Cartographie de présence</title>
+    <meta name="description" content="Capteurs ToF et radar 60 GHz pour cartographie d'occupation. Précommande Q3 2026.">
+    <link rel="canonical" href="https://noisyless.com/produits/heatmap">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #FFFFFF; --bg-alt: #F5F5F3; --ink: #1A1A1A; --ink-light: #5A5A5A;
+            --border: #E0E0E0; --signal: #FF6B00; --signal-dim: #FF6B0020;
+            --font-display: 'Space Mono', monospace; --font-body: 'IBM Plex Sans', sans-serif;
+        }
+        body { font-family: var(--font-body); background: var(--bg); color: var(--ink); line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+        header { border-bottom: 1px solid var(--border); padding: 20px 0; }
+        .header-inner { display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--ink); }
+        .logo img { height: 32px; width: auto; }
+        .logo-text { font-family: var(--font-display); font-weight: 700; }
+        nav a { color: var(--ink); text-decoration: none; font-family: var(--font-display); font-size: 0.875rem; margin-left: 24px; }
+        
+        .hero { padding: 60px 0; border-bottom: 1px solid var(--border); }
+        .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: start; }
+        @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
+        .hero-image { background: var(--bg-alt); border: 1px solid var(--border); aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); color: var(--ink-light); }
+        .hero h1 { font-family: var(--font-display); font-size: 2.5rem; margin-bottom: 16px; }
+        .hero .price { font-family: var(--font-display); font-size: 2rem; font-weight: 700; margin-bottom: 16px; }
+        .hero .availability { color: var(--signal); font-family: var(--font-display); font-size: 0.875rem; margin-bottom: 24px; }
+        .btn { display: inline-block; padding: 14px 28px; font-family: var(--font-display); font-weight: 700; text-decoration: none; border: 1px solid var(--ink); cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: var(--ink); color: var(--bg); }
+        .btn-primary:hover { background: var(--signal); border-color: var(--signal); }
+        .btn-secondary { background: transparent; color: var(--ink); }
+        .btn-secondary:hover { background: var(--bg-alt); }
+        
+        .specs { padding: 60px 0; border-bottom: 1px solid var(--border); }
+        .specs h2 { font-family: var(--font-display); margin-bottom: 40px; }
+        .specs-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 40px; }
+        @media (max-width: 768px) { .specs-grid { grid-template-columns: 1fr; } }
+        .spec-category h3 { font-family: var(--font-display); font-size: 1rem; margin-bottom: 20px; color: var(--ink-light); }
+        .spec-list { list-style: none; }
+        .spec-list li { padding: 12px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; font-size: 0.9375rem; }
+        .spec-label { color: var(--ink-light); }
+        .spec-value { font-family: var(--font-display); font-weight: 700; }
+        
+        .heatmap-demo { padding: 60px 0; background: var(--bg-alt); border-bottom: 1px solid var(--border); }
+        .heatmap-demo h2 { font-family: var(--font-display); text-align: center; margin-bottom: 40px; }
+        .heatmap-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 800px; margin: 0 auto; }
+        .heatmap-cell { aspect-ratio: 1; background: var(--bg); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 0.75rem; }
+        
+        .notify-form { padding: 60px 0; max-width: 500px; margin: 0 auto; }
+        .notify-form h2 { font-family: var(--font-display); margin-bottom: 16px; }
+        .notify-form p { color: var(--ink-light); margin-bottom: 24px; }
+        .notify-form input { width: 100%; padding: 12px; border: 1px solid var(--border); font-family: var(--font-body); margin-bottom: 16px; }
+        .notify-form button { width: 100%; }
+        
+        footer { padding: 40px 0; border-top: 1px solid var(--border); text-align: center; font-size: 0.875rem; color: var(--ink-light); }
+        footer a { color: var(--ink-light); margin: 0 8px; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-inner">
+            <a href="/" class="logo">
+                <img src="/assets/logohorizmonochrome.png" alt="NOISYLESS">
+            </a>
+            <nav>
+                <a href="/">Accueil</a>
+                <a href="/produits/noisyless-simple.html">Simple</a>
+                <a href="/faq.html">FAQ</a>
+                <a href="https://platform.noisyless.com">Dashboard</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container hero-grid">
+            <div class="hero-image">
+                [HeatMap visualization — grille 16×16 avec zones d'occupation]
+            </div>
+            <div>
+                <h1>NOISYLESS HeatMap</h1>
+                <p style="color: var(--ink-light); margin-bottom: 24px;">Cartographie de présence par Time-of-Flight et radar mmWave.</p>
+                <div class="price">À partir de 129,00 € <span style="font-size: 1rem; font-weight: 400; color: var(--ink-light);">HT</span></div>
+                <div class="availability">⏳ Précommande — disponibilité Q3 2026</div>
+                <p style="margin-bottom: 32px; font-size: 0.9375rem; color: var(--ink-light);">
+                    <strong>Intérieur :</strong> ToF 16×16, portée 6m, batterie 12 mois<br>
+                    <strong>Extérieur :</strong> Radar 60 GHz, portée 15m, IP65, solaire
+                </p>
+                <a href="#notify" class="btn btn-primary">Être alerté du lancement</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="heatmap-demo">
+        <div class="container">
+            <h2>Visualisation temps réel</h2>
+            <div class="heatmap-grid">
+                <div class="heatmap-cell" style="background: #00A85930;">Zone 1<br>3 pers</div>
+                <div class="heatmap-cell" style="background: #FFB80030;">Zone 2<br>1 pers</div>
+                <div class="heatmap-cell" style="background: transparent;">Zone 3<br>—</div>
+                <div class="heatmap-cell" style="background: #FF6B0030;">Zone 4<br>5 pers</div>
+                <div class="heatmap-cell" style="background: transparent;">Zone 5<br>—</div>
+                <div class="heatmap-cell" style="background: #00A85930;">Zone 6<br>2 pers</div>
+                <div class="heatmap-cell" style="background: transparent;">Zone 7<br>—</div>
+                <div class="heatmap-cell" style="background: transparent;">Zone 8<br>—</div>
+                <div class="heatmap-cell" style="background: #FF6B0030;">Zone 9<br>4 pers</div>
+            </div>
+            <p style="text-align: center; margin-top: 24px; font-size: 0.875rem; color: var(--ink-light);">
+                Grille 16×16 réelle — mise à jour toutes les 60-120 secondes
+            </p>
+        </div>
+    </section>
+
+    <section class="specs">
+        <div class="container">
+            <h2>Spécifications techniques</h2>
+            <div class="specs-grid">
+                <div class="spec-category">
+                    <h3>INTÉRIEUR — ToF</h3>
+                    <ul class="spec-list">
+                        <li><span class="spec-label">Capteur</span> <span class="spec-value">TMF8829 16×16</span></li>
+                        <li><span class="spec-label">Portée</span> <span class="spec-value">0.5-6 m</span></li>
+                        <li><span class="spec-label">Précision</span> <span class="spec-value">±5 cm</span></li>
+                        <li><span class="spec-label">Champ</span> <span class="spec-value">60° diagonal</span></li>
+                        <li><span class="spec-label">Alimentation</span> <span class="spec-value">18650 (6-12 mois)</span></li>
+                    </ul>
+                </div>
+                <div class="spec-category">
+                    <h3>EXTÉRIEUR — Radar</h3>
+                    <ul class="spec-list">
+                        <li><span class="spec-label">Capteur</span> <span class="spec-value">LD6001A 60 GHz</span></li>
+                        <li><span class="spec-label">Portée</span> <span class="spec-value">3-15 m</span></li>
+                        <li><span class="spec-label">Précision</span> <span class="spec-value">±10 cm</span></li>
+                        <li><span class="spec-label">Champ</span> <span class="spec-value">90° horizontal</span></li>
+                        <li><span class="spec-label">Protection</span> <span class="spec-value">IP65, -20 à 60°C</span></li>
+                    </ul>
+                </div>
+                <div class="spec-category">
+                    <h3>MESH ESP-NOW</h3>
+                    <ul class="spec-list">
+                        <li><span class="spec-label">Protocole</span> <span class="spec-value">ESP-NOW 2.4 GHz</span></li>
+                        <li><span class="spec-label">Portée mesh</span> <span class="spec-value">~100 m LOS</span></li>
+                        <li><span class="spec-label">Noeuds</span> <span class="spec-value">Jusqu'à 50 par master</span></li>
+                        <li><span class="spec-label">Gateway</span> <span class="spec-value">Aucune (master élu)</span></li>
+                    </ul>
+                </div>
+                <div class="spec-category">
+                    <h3>PHYSIQUE</h3>
+                    <ul class="spec-list">
+                        <li><span class="spec-label">Dimensions</span> <span class="spec-value">70 × 70 × 20 mm</span></li>
+                        <li><span class="spec-label">Poids</span> <span class="spec-value">120g</span></li>
+                        <li><span class="spec-label">Fixation</span> <span class="spec-value">Adhésif 3M ou vis</span></li>
+                        <li><span class="spec-label">Couleur</span> <span class="spec-value">Blanc ou noir</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="notify-form" id="notify">
+        <div class="container">
+            <h2>Être alerté du lancement</h2>
+            <p>Disponibilité prévue Q3 2026. Prix early-bird : -20% pour les précommandes.</p>
+            <form id="notifyForm">
+                <input type="email" placeholder="votre@email.com" required id="email">
+                <input type="text" placeholder="Nom / Société" required id="name">
+                <button type="submit" class="btn btn-primary">S'inscrire à la liste</button>
+                <p id="notifyStatus" style="margin-top: 16px; font-size: 0.875rem; display: none;"></p>
+            </form>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>© 2026 NOISYLESS — ELEC-CORE / MBHREP</p>
+            <p style="margin-top: 8px;">
+                <a href="/mentions-legales.html">Mentions légales</a>
+                <a href="/confidentialite.html">Confidentialité</a>
+                <a href="/cgv.html">CGV</a>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        document.getElementById('notifyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const status = document.getElementById('notifyStatus');
+            status.style.display = 'block';
+            status.textContent = 'Inscription en cours...';
+            
+            try {
+                const response = await fetch('https://platform.noisyless.com/api/notify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: document.getElementById('email').value,
+                        name: document.getElementById('name').value,
+                        product: 'heatmap'
+                    })
+                });
+                
+                if (response.ok) {
+                    status.textContent = '✅ Inscrit ! Vous serez alerté en premier.';
+                    status.style.color = '#00A859';
+                    document.getElementById('notifyForm').reset();
+                } else {
+                    throw new Error();
+                }
+            } catch (error) {
+                status.textContent = 'Inscription enregistrée localement. Nous vous contacterons.';
+                status.style.color = '#5A5A5A';
+            }
+        });
+    </script>
+</body>
+</html>

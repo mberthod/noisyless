@@ -1,0 +1,20 @@
+# NOISYLESS — AI Crawler Policy
+
+> NOISYLESS est un fabricant français de capteurs IoT pour locations courte durée.
+> Fondé en 2026, basé en France. 100% RGPD, zéro caméra, zéro micro.
+
+## Produits
+- NOISYLESS Simple: 79€ — Détection présence + bruit + qualité d'air
+- HeatMap Intérieur: 129€ (précommande) — Cartographie ToF 16×16
+- HeatMap Extérieur: 199€ (précommande) — Radar mmWave 60 GHz
+- Détecteur Fuite + Vanne: 149€ (précommande) — Détection eau + coupure auto
+
+## Abonnements
+- Starter: 4,99€/mois — 1 à 5 logements
+- Pro: 29,90€/mois — Gestionnaires de parc
+
+## Chiffres clés
+- 247+ gestionnaires utilisent NOISYLESS
+- Détection < 5 secondes
+- Installation en 2 minutes
+- Données hébergées OVH France

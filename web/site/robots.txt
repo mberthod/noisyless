@@ -1,0 +1,27 @@
+# Fichier: web/site/robots.txt
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: *
+Disallow: /merci
+Disallow: /annule
+
+Sitemap: https://noisyless.com/sitemap.xml

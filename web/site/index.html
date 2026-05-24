@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- SEO -->
+    <title>NOISYLESS | Instrument de surveillance environnementale</title>
+    <meta name="description" content="Capteurs IoT professionnels pour locations courte durée. Mesure bruit, occupation, qualité d'air. Sans caméra. Données en Europe.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://noisyless.com">
+    
+    <!-- Preconnects -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        /* === RESET & BASE === */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        :root {
+            --bg: #FFFFFF;
+            --bg-alt: #F5F5F3;
+            --ink: #1A1A1A;
+            --ink-light: #5A5A5A;
+            --border: #E0E0E0;
+            --signal: #FF6B00;
+            --signal-dim: #FF6B0020;
+            --success: #00A859;
+            --warning: #FFB800;
+            
+            --font-display: 'Space Mono', monospace;
+            --font-body: 'IBM Plex Sans', sans-serif;
+            
+            --grid-gap: 24px;
+            --container-max: 1200px;
+        }
+        
+        html { font-size: 16px; scroll-behavior: smooth; }
+        
+        body {
+            font-family: var(--font-body);
+            background: var(--bg);
+            color: var(--ink);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* === TYPOGRAPHY === */
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-display);
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+        }
+        
+        h1 { font-size: clamp(2rem, 5vw, 3.5rem); }
+        h2 { font-size: clamp(1.5rem, 3vw, 2.25rem); }
+        h3 { font-size: 1.25rem; }
+        
+        p { margin-bottom: 1.5rem; max-width: 65ch; }
+        
+        .mono { font-family: var(--font-display); font-size: 0.875rem; }
+        .mono-sm { font-size: 0.75rem; }
+        
+        /* === LAYOUT === */
+        .container {
+            max-width: var(--container-max);
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        
+        .grid {
+            display: grid;
+            gap: var(--grid-gap);
+        }
+        
+        .grid-12 { grid-template-columns: repeat(12, 1fr); }
+        .col-12 { grid-column: span 12; }
+        .col-8 { grid-column: span 8; }
+        .col-6 { grid-column: span 6; }
+        .col-4 { grid-column: span 4; }
+        
+        @media (max-width: 768px) {
+            .col-8, .col-6, .col-4 { grid-column: span 12; }
+        }
+        
+        /* === HEADER === */
+        header {
+            border-bottom: 1px solid var(--border);
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            z-index: 100;
+        }
+        
+        .header-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--ink);
+        }
+        
+        .logo img {
+            height: 32px;
+            width: auto;
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 32px;
+        }
+        
+        nav a {
+            color: var(--ink);
+            text-decoration: none;
+            font-family: var(--font-display);
+            font-size: 0.875rem;
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.2s;
+        }
+        
+        nav a:hover { border-bottom-color: var(--signal); }
+        
+        .nav-cta {
+            background: var(--ink);
+            color: var(--bg);
+            padding: 10px 20px;
+            border-radius: 0;
+            text-decoration: none;
+            font-family: var(--font-display);
+            font-size: 0.875rem;
+            transition: background 0.2s;
+        }
+        
+        .nav-cta:hover { background: var(--signal); }
+        
+        /* === HERO INSTRUMENT === */
+        .hero {
+            padding: 80px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+        
+        @media (max-width: 900px) {
+            .hero-grid { grid-template-columns: 1fr; gap: 40px; }
+        }
+        
+        .hero-content h1 {
+            margin-bottom: 24px;
+        }
+        
+        .hero-content .lead {
+            font-size: 1.125rem;
+            color: var(--ink-light);
+            margin-bottom: 32px;
+        }
+        
+        .hero-cta {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 14px 28px;
+            font-family: var(--font-display);
+            font-size: 0.875rem;
+            font-weight: 700;
+            text-decoration: none;
+            border: 1px solid var(--ink);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: var(--ink);
+            color: var(--bg);
+        }
+        
+        .btn-primary:hover {
+            background: var(--signal);
+            border-color: var(--signal);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: var(--ink);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--bg-alt);
+        }
+        
+        /* === INSTRUMENT DISPLAY === */
+        .instrument {
+            background: var(--bg-alt);
+            border: 1px solid var(--border);
+            padding: 32px;
+            font-family: var(--font-display);
+        }
+        
+        .instrument-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .instrument-title {
+            font-size: 0.75rem;
+            color: var(--ink-light);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        .instrument-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .instrument-readings {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .reading {
+            text-align: center;
+        }
+        
+        .reading-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--ink);
+        }
+        
+        .reading-unit {
+            font-size: 0.75rem;
+            color: var(--ink-light);
+            margin-top: 4px;
+        }
+        
+        .reading-label {
+            font-size: 0.625rem;
+            color: var(--ink-light);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 8px;
+        }
+        
+        .instrument-graph {
+            height: 120px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .graph-line {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60%;
+            background: linear-gradient(to top, var(--signal-dim), transparent);
+        }
+        
+        .graph-threshold {
+            position: absolute;
+            top: 40%;
+            left: 0;
+            right: 0;
+            border-top: 1px dashed var(--signal);
+        }
+        
+        .graph-threshold::after {
+            content: '65 dB';
+            position: absolute;
+            right: 8px;
+            top: -10px;
+            font-size: 0.625rem;
+            color: var(--signal);
+        }
+        
+        /* === FEATURES === */
+        .features {
+            padding: 80px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .features-header {
+            margin-bottom: 60px;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+        }
+        
+        @media (max-width: 900px) {
+            .features-grid { grid-template-columns: 1fr; }
+        }
+        
+        .feature {
+            padding: 32px;
+            border: 1px solid var(--border);
+        }
+        
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border: 1px solid var(--ink);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+        
+        .feature h3 {
+            margin-bottom: 12px;
+        }
+        
+        .feature p {
+            font-size: 0.9375rem;
+            color: var(--ink-light);
+            margin-bottom: 0;
+        }
+        
+        /* === PRODUCTS === */
+        .products {
+            padding: 80px 0;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-alt);
+        }
+        
+        .products-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 32px;
+        }
+        
+        @media (max-width: 768px) {
+            .products-grid { grid-template-columns: 1fr; }
+        }
+        
+        .product-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .product-header {
+            margin-bottom: 24px;
+        }
+        
+        .product-name {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+        
+        .product-desc {
+            color: var(--ink-light);
+            font-size: 0.9375rem;
+        }
+        
+        .product-price {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+        }
+        
+        .product-price span {
+            font-size: 0.875rem;
+            font-weight: 400;
+            color: var(--ink-light);
+        }
+        
+        .product-specs {
+            list-style: none;
+            margin-bottom: 32px;
+            flex-grow: 1;
+        }
+        
+        .product-specs li {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9375rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .product-specs li::before {
+            content: '→';
+            font-family: var(--font-display);
+            color: var(--signal);
+        }
+        
+        .product-availability {
+            font-family: var(--font-display);
+            font-size: 0.75rem;
+            padding: 8px 12px;
+            background: var(--bg-alt);
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        
+        .product-availability.in-stock {
+            color: var(--success);
+        }
+        
+        .product-availability.preorder {
+            color: var(--warning);
+        }
+        
+        /* === HOW IT WORKS === */
+        .how-it-works {
+            padding: 80px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            margin-top: 60px;
+        }
+        
+        @media (max-width: 900px) {
+            .steps { grid-template-columns: 1fr; }
+        }
+        
+        .step {
+            position: relative;
+            padding-left: 60px;
+        }
+        
+        .step-number {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 40px;
+            height: 40px;
+            border: 1px solid var(--ink);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-display);
+            font-weight: 700;
+        }
+        
+        .step h3 {
+            margin-bottom: 12px;
+        }
+        
+        .step p {
+            font-size: 0.9375rem;
+            color: var(--ink-light);
+        }
+        
+        /* === FAQ SECTION === */
+        .faq {
+            padding: 80px 0;
+        }
+        
+        .faq h2 {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+        
+        .faq details {
+            border-bottom: 1px solid var(--border);
+            padding: 20px 0;
+        }
+        
+        .faq details:first-of-type {
+            border-top: 1px solid var(--border);
+        }
+        
+        .faq summary {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 1.0625rem;
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .faq summary::-webkit-details-marker {
+            display: none;
+        }
+        
+        .faq summary::after {
+            content: '+';
+            font-size: 1.25rem;
+            color: var(--signal);
+            margin-left: 16px;
+            flex-shrink: 0;
+        }
+        
+        .faq details[open] summary::after {
+            content: '−';
+        }
+        
+        .faq details p {
+            margin-top: 12px;
+            color: var(--ink-light);
+            font-size: 0.9375rem;
+            line-height: 1.6;
+        }
+
+        /* === CTA SECTION === */
+        .cta-section {
+            padding: 80px 0;
+            background: var(--ink);
+            color: var(--bg);
+            text-align: center;
+        }
+        
+        .cta-section h2 {
+            margin-bottom: 16px;
+        }
+        
+        .cta-section p {
+            margin: 0 auto 32px;
+            color: #999;
+        }
+        
+        .cta-section .btn {
+            border-color: var(--bg);
+        }
+        
+        .cta-section .btn-primary {
+            background: var(--bg);
+            color: var(--ink);
+        }
+        
+        .cta-section .btn-primary:hover {
+            background: var(--signal);
+            border-color: var(--signal);
+            color: var(--bg);
+        }
+        
+        /* === FOOTER === */
+        footer {
+            padding: 60px 0 40px;
+            border-top: 1px solid var(--border);
+        }
+        
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+        
+        @media (max-width: 900px) {
+            .footer-grid { grid-template-columns: 1fr 1fr; }
+        }
+        
+        .footer-brand p {
+            font-size: 0.875rem;
+            color: var(--ink-light);
+            margin-bottom: 0;
+        }
+        
+        .footer-col h4 {
+            font-size: 0.875rem;
+            margin-bottom: 20px;
+            color: var(--ink-light);
+        }
+        
+        .footer-col ul {
+            list-style: none;
+        }
+        
+        .footer-col li {
+            margin-bottom: 12px;
+        }
+        
+        .footer-col a {
+            color: var(--ink);
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+        
+        .footer-col a:hover {
+            color: var(--signal);
+        }
+        
+        .footer-bottom {
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--ink-light);
+        }
+        
+        /* === MOBILE NAV === */
+        .mobile-nav-toggle {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-nav-toggle { display: block; }
+            nav ul { display: none; }
+            nav.active ul {
+                display: flex;
+                flex-direction: column;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: var(--bg);
+                border-bottom: 1px solid var(--border);
+                padding: 20px;
+                gap: 16px;
+            }
+        }
+    </style>
+<!-- JSON-LD Schema.org pour Product (NOISYLESS Simple 79€) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "NOISYLESS Simple",
+  "description": "Détecteur de bruit et présence sans caméra pour Airbnb",
+  "brand": {"@type": "Brand", "name": "NOISYLESS"},
+  "sku": "NL-SIMPLE",
+  "offers": {
+    "@type": "Offer",
+    "price": "79.00",
+    "priceCurrency": "EUR",
+    "itemCondition": "http://schema.org/new",
+    "availability": "https://schema.org/InStock"
+  },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.9",
+    "reviewCount": "47"
+  }
+}
+</script>
+<!-- JSON-LD Schema.org pour Organization -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "NOISYLESS",
+  "url": "https://noisyless.com",
+  "logo": "https://noisyless.com/assets/logo.png",
+  "description": "Capteurs IoT pour locations courte durée, protégeant contre les événements imprévus en France.",
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "email": "contact@noisyless.com"
+  }
+}
+</script>
+<body>
+    <!-- HEADER -->
+    <header>
+        <div class="container header-inner">
+            <a href="/" class="logo">
+                <img src="/assets/logohorizmonochrome.png" alt="NOISYLESS">
+            </a>
+            
+            <button class="mobile-nav-toggle" aria-label="Menu">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <line x1="3" y1="12" x2="21" y2="12"/>
+                    <line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+            </button>
+            
+            <nav>
+                <ul>
+                    <li><a href="#produits">Produits</a></li>
+                    <li><a href="#fonctionnement">Fonctionnement</a></li>
+                    <li><a href="/faq.html">FAQ</a></li>
+                    <li><a href="/blog/">Blog</a></li>
+                    <li><a href="https://platform.noisyless.com" class="nav-cta">Dashboard</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- HERO INSTRUMENT -->
+    <section class="hero">
+        <div class="container hero-grid">
+            <div class="hero-content">
+                <h1>Surveillance environnementale sans surveillance humaine</h1>
+                <p class="lead">Capteurs IoT professionnels pour locations courte durée. Mesure objective : bruit, occupation, qualité d'air. Aucune image. Aucun son enregistré.</p>
+                <div class="hero-cta">
+                    <a href="#produits" class="btn btn-primary">Voir les produits</a>
+                    <a href="/pilote.html" class="btn btn-secondary">Demander un pilote</a>
+                </div>
+            </div>
+            
+            <div class="instrument">
+                <div class="instrument-header">
+                    <span class="instrument-title">NOISYLESS Simple — Unité #0247</span>
+                    <div class="instrument-status">
+                        <div class="status-dot"></div>
+                        <span>En ligne</span>
+                    </div>
+                </div>
+                
+                <div class="instrument-readings">
+                    <div class="reading">
+                        <div class="reading-value" id="reading-db">42</div>
+                        <div class="reading-unit">dB(A)</div>
+                        <div class="reading-label">Niveau sonore</div>
+                    </div>
+                    <div class="reading">
+                        <div class="reading-value" id="reading-co2">680</div>
+                        <div class="reading-unit">ppm</div>
+                        <div class="reading-label">CO₂</div>
+                    </div>
+                    <div class="reading">
+                        <div class="reading-value" id="reading-occ">3</div>
+                        <div class="reading-unit">personnes</div>
+                        <div class="reading-label">Occupation estimée</div>
+                    </div>
+                </div>
+                
+                <div class="instrument-graph">
+                    <div class="graph-line"></div>
+                    <div class="graph-threshold"></div>
+                </div>
+                
+                <div class="mono mono-sm" style="margin-top: 16px; color: var(--ink-light);">
+                    Dernière synchro : <span id="last-sync">--:--:--</span> · Données locales, exportables
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="features">
+        <div class="container">
+            <div class="features-header">
+                <h2>Conçu pour la conformité</h2>
+                <p>RGPD by design. Aucune donnée personnelle collectée. Installation en 2 minutes.</p>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature">
+                    <div class="feature-icon">📊</div>
+                    <h3>Métrologie objective</h3>
+                    <p>Niveau sonore pondéré A, CO₂, occupation par inference. Pas d'enregistrement audio ou vidéo.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🇪🇺</div>
+                    <h3>Données en Europe</h3>
+                    <p>Serveurs Hetzner (Allemagne). Export CSV/JSON. Conservation configurable 1-24 mois.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Alertes temps réel</h3>
+                    <p>Seuils configurables. Notifications Telegram, SMS, webhook. Détection &lt; 5 secondes.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRODUCTS -->
+    <section class="products" id="produits">
+        <div class="container">
+            <div class="products-header">
+                <h2>Produits disponibles</h2>
+                <p>Matériel professionnel. Garantie 2 ans. Support inclus.</p>
+            </div>
+            
+            <div class="products-grid">
+                <!-- Product 1 -->
+                <div class="product-card">
+                    <div class="product-header">
+                        <h3 class="product-name">NOISYLESS Simple</h3>
+                        <p class="product-desc">Capteur environnemental complet</p>
+                    </div>
+                    
+                    <div class="product-price">79,00 € <span>HT</span></div>
+                    
+                    <div class="product-availability in-stock">
+                        ✓ En stock — expédition 24-48h
+                    </div>
+                    
+                    <ul class="product-specs">
+                        <li>Niveau sonore dB(A)</li>
+                        <li>Occupation par PIR</li>
+                        <li>Qualité d'air (CO₂, TVOC)</li>
+                        <li>Température, humidité, luminosité</li>
+                        <li>WiFi 2.4 GHz + Ethernet optionnel</li>
+                        <li>Alimentation USB-C secteur</li>
+                    </ul>
+                    
+                    <a href="/produits/noisyless-simple.html" class="btn btn-primary">Configurer</a>
+                </div>
+                
+                <!-- Product 2 -->
+                <div class="product-card">
+                    <div class="product-header">
+                        <h3 class="product-name">NOISYLESS HeatMap</h3>
+                        <p class="product-desc">Cartographie de présence</p>
+                    </div>
+                    
+                    <div class="product-price">À partir de 129,00 € <span>HT</span></div>
+                    
+                    <div class="product-availability preorder">
+                        ⏳ Précommande — disponibilité Q3 2026
+                    </div>
+                    
+                    <ul class="product-specs">
+                        <li>ToF 16×16 (intérieur)</li>
+                        <li>Radar 60 GHz (extérieur)</li>
+                        <li>Mesh ESP-NOW sans gateway</li>
+                        <li>Batterie 6-12 mois</li>
+                        <li>IP65 extérieur</li>
+                        <li>Dashboard temps réel</li>
+                    </ul>
+                    
+                    <a href="/produits/heatmap.html" class="btn btn-secondary">Voir détails</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section class="how-it-works" id="fonctionnement">
+        <div class="container">
+            <h2>Déploiement en 3 étapes</h2>
+            
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">01</div>
+                    <h3>Installation physique</h3>
+                    <p>Branchez en USB-C. Connectez au WiFi via QR code. Fixez au mur (adhésif 3M ou vis). 2 minutes.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">02</div>
+                    <h3>Configuration seuils</h3>
+                    <p>Définissez vos règles : 65 dB après 22h, 4 occupants max, CO₂ &gt; 1200 ppm. Modifiables à tout moment.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">03</div>
+                    <h3>Réception alertes</h3>
+                    <p>Telegram, SMS, email ou webhook. Historique consultable. Export pour assurances.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section" id="contact">
+        <div class="container">
+            <h2>Essayer gratuitement pendant 3 mois</h2>
+            <p>5 capteurs déployés. Zéro engagement. Configuration assistée.</p>
+            <a href="/pilote.html" class="btn btn-primary">Demander un pilote</a>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="faq" id="faq" itemscope itemtype="https://schema.org/FAQPage">
+        <div class="container">
+            <h2>Questions fréquentes</h2>
+
+            <details itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <summary itemprop="name">Comment installer les capteurs ?</summary>
+                <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <p itemprop="text">En 2 minutes : branchez en USB-C, connectez au WiFi via l'app. Aucun perçage nécessaire.</p>
+                </div>
+            </details>
+
+            <details itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <summary itemprop="name">Est-ce conforme au RGPD ?</summary>
+                <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <p itemprop="text">Oui, 100%. Aucune capture d'image ni de son — uniquement des métadonnées anonymes.</p>
+                </div>
+            </details>
+
+            <details itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <summary itemprop="name">Quelle est l'autonomie des capteurs ?</summary>
+                <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <p itemprop="text">Jusqu'à 6 mois sur batterie selon configuration. Mode deep sleep par défaut.</p>
+                </div>
+            </details>
+
+            <details itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <summary itemprop="name">Peut-on détecter une fête ?</summary>
+                <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <p itemprop="text">Oui. Alerte en moins de 5 secondes quand le bruit dépasse 65 dB après 22h.</p>
+                </div>
+            </details>
+
+            <details itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <summary itemprop="name">Quels sont les capteurs disponibles ?</summary>
+                <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <p itemprop="text">NOISYLESS Simple (présence + bruit + qualité d'air, 79€), HeatMap Intérieur (129€), HeatMap Extérieur (199€).</p>
+                </div>
+            </details>
+
+            <details itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <summary itemprop="name">Y a-t-il un abonnement ?</summary>
+                <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <p itemprop="text">Oui, à partir de 4,99€/mois pour 1 à 5 logements. Abonnement Pro à 29,90€/mois pour gestionnaires de parc.</p>
+                </div>
+            </details>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="logo" style="margin-bottom: 16px;">
+                        <div class="logo-mark">N</div>
+                        <span class="logo-text">NOISYLESS</span>
+                    </div>
+                    <p>Monitoring environnemental pour l'immobilier professionnel.</p>
+                </div>
+                
+                <div class="footer-col">
+                    <h4>Produits</h4>
+                    <ul>
+                        <li><a href="/produits/noisyless-simple.html">NOISYLESS Simple</a></li>
+                        <li><a href="/produits/heatmap.html">HeatMap</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-col">
+                    <h4>Ressources</h4>
+                    <ul>
+                        <li><a href="/faq.html">FAQ</a></li>
+                        <li><a href="/blog/">Blog</a></li>
+                        <li><a href="/docs/">Documentation</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-col">
+                    <h4>Légal</h4>
+                    <ul>
+                        <li><a href="/mentions-legales.html">Mentions légales</a></li>
+                        <li><a href="/confidentialite.html">Confidentialité</a></li>
+                        <li><a href="/cgv.html">CGV</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <span>© 2026 NOISYLESS — ELEC-CORE / MBHREP</span>
+                <span>contact@noisyless.com</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile nav toggle
+        document.querySelector('.mobile-nav-toggle').addEventListener('click', function() {
+            document.querySelector('nav').classList.toggle('active');
+        });
+        
+        // Live instrument simulation (demo only)
+        function updateReadings() {
+            const db = Math.floor(35 + Math.random() * 20);
+            const co2 = Math.floor(600 + Math.random() * 400);
+            const occ = Math.floor(1 + Math.random() * 5);
+            
+            document.getElementById('reading-db').textContent = db;
+            document.getElementById('reading-co2').textContent = co2;
+            document.getElementById('reading-occ').textContent = occ;
+            
+            const now = new Date();
+            document.getElementById('last-sync').textContent = now.toLocaleTimeString('fr-FR');
+        }
+        
+        updateReadings();
+        setInterval(updateReadings, 3000);
+    </script>
+</body>
+</html>

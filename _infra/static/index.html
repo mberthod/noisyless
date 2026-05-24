@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NOISYLESS — HeatMap Presence</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50">
+  <div id="app" class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+      <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold text-gray-900">NOISYLESS</h1>
+            <p class="text-xs text-gray-500">HeatMap Presence</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div v-if="isLoggedIn" class="flex items-center gap-2">
+            <span class="text-sm text-gray-600">{{ userEmail }}</span>
+            <button @click="logout" class="text-sm text-red-600 hover:underline">Déconnexion</button>
+          </div>
+          <button v-else @click="showLogin = true" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm">
+            Connexion
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-8">
+      <!-- Not Authenticated -->
+      <div v-if="!isLoggedIn" class="text-center py-20">
+        <h2 class="text-3xl font-bold text-gray-900 mb-4">Bienvenue sur NOISYLESS</h2>
+        <p class="text-gray-600 mb-8 max-w-md mx-auto">
+          Supervisez la présence et l'occupation de vos villas en temps réel grâce à nos capteurs HeatMap.
+        </p>
+        <button @click="showLogin = true" class="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium">
+          Accéder à mon dashboard
+        </button>
+      </div>
+
+      <!-- Authenticated -->
+      <div v-else class="space-y-6">
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="bg-white p-6 rounded-xl shadow-sm border">
+            <div class="text-sm text-gray-500 mb-1">Villas actives</div>
+            <div class="text-3xl font-bold text-gray-900">{{ stats.villas }}</div>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow-sm border">
+            <div class="text-sm text-gray-500 mb-1">Capteurs en ligne</div>
+            <div class="text-3xl font-bold text-emerald-600">{{ stats.sensors }}</div>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow-sm border">
+            <div class="text-sm text-gray-500 mb-1">Occupation actuelle</div>
+            <div class="text-3xl font-bold text-blue-600">{{ stats.currentOccupancy }}</div>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow-sm border">
+            <div class="text-sm text-gray-500 mb-1">Alertes (24h)</div>
+            <div class="text-3xl font-bold text-orange-600">{{ stats.alerts }}</div>
+          </div>
+        </div>
+
+        <!-- Heatmap & Chart -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Heatmap -->
+          <div class="bg-white p-6 rounded-xl shadow-sm border">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Heatmap en temps réel</h3>
+            <div class="aspect-square bg-gradient-to-br from-emerald-50 to-teal-50 rounded-lg flex items-center justify-center">
+              <div class="text-center">
+                <svg class="w-16 h-16 text-emerald-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                </svg>
+                <p class="text-gray-500 text-sm">Sélectionnez une villa pour afficher la heatmap</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Occupancy Chart -->
+          <div class="bg-white p-6 rounded-xl shadow-sm border">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Occupation (24h)</h3>
+            <canvas ref="chartRef" class="w-full h-64"></canvas>
+          </div>
+        </div>
+
+        <!-- Devices List -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Mes capteurs</h3>
+          <div v-if="devices.length === 0" class="text-gray-500 text-sm py-8 text-center">
+                Aucun capteur enregistré. Connectez votre premier capteur HeatMap.
+          </div>
+          <div v-else class="space-y-3">
+            <div v-for="device in devices" :key="device.id" class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div class="flex items-center gap-3">
+                <div class="w-3 h-3 rounded-full" :class="device.status === 'online' ? 'bg-emerald-500' : 'bg-gray-400'"></div>
+                <div>
+                  <div class="font-medium text-gray-900">{{ device.name }}</div>
+                  <div class="text-sm text-gray-500">{{ device.id }} • {{ device.type }}</div>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="text-sm font-medium text-gray-900">{{ device.lastSeen }}</div>
+                <div class="text-xs text-gray-500">{{ device.battery }}% batterie</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Login Modal -->
+    <div v-if="showLogin" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+        <div class="p-6">
+          <h3 class="text-xl font-semibold text-gray-900 mb-4">Connexion</h3>
+          <div v-if="loginStep === 1">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+            <input v-model="loginEmail" type="email" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" placeholder="vous@exemple.com">
+            <button @click="sendMagicLink" class="w-full mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium">
+              Envoyer le lien magique
+            </button>
+          </div>
+          <div v-else>
+            <p class="text-sm text-gray-600 mb-4">Un lien de connexion a été envoyé à <strong>{{ loginEmail }}</strong></p>
+            <div class="flex items-center gap-2 text-sm text-emerald-600">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              Lien envoyé !
+            </div>
+          </div>
+          <button @click="showLogin = false" class="w-full mt-3 px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">
+            Fermer
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t mt-20">
+      <div class="max-w-7xl mx-auto px-4 py-6 text-center text-sm text-gray-500">
+        © 2026 NOISYLESS — HeatMap Presence Detection
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const { createApp } = Vue
+
+    createApp({
+      data() {
+        return {
+          isLoggedIn: false,
+          userEmail: '',
+          showLogin: false,
+          loginEmail: '',
+          loginStep: 1,
+          stats: {
+            villas: 0,
+            sensors: 0,
+            currentOccupancy: 0,
+            alerts: 0
+          },
+          devices: [],
+          chartRef: null
+        }
+      },
+      mounted() {
+        this.checkAuth()
+        if (this.isLoggedIn) {
+          this.loadData()
+        }
+      },
+      methods: {
+        checkAuth() {
+          const token = localStorage.getItem('noisyless_token')
+          const email = localStorage.getItem('noisyless_email')
+          if (token && email) {
+            this.isLoggedIn = true
+            this.userEmail = email
+          }
+        },
+        async sendMagicLink() {
+          try {
+            const response = await fetch('/api/auth/send-magic-link', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: this.loginEmail })
+            })
+            if (response.ok) {
+              this.loginStep = 2
+            } else {
+              alert('Erreur lors de l\'envoi du lien')
+            }
+          } catch (e) {
+            console.error('Magic link error:', e)
+            alert('Erreur de connexion au serveur')
+          }
+        },
+        logout() {
+          localStorage.removeItem('noisyless_token')
+          localStorage.removeItem('noisyless_email')
+          this.isLoggedIn = false
+          this.userEmail = ''
+          window.location.reload()
+        },
+        async loadData() {
+          // Simulated data for demo
+          this.stats = {
+            villas: 3,
+            sensors: 12,
+            currentOccupancy: 8,
+            alerts: 2
+          }
+          this.devices = [
+            { id: 'NL-TOF-001', name: 'Salon - Plafond', type: 'ToF TMF8829', status: 'online', battery: 87, lastSeen: 'Il y a 30s' },
+            { id: 'NL-TOF-002', name: 'Cuisine - Plafond', type: 'ToF TMF8829', status: 'online', battery: 92, lastSeen: 'Il y a 45s' },
+            { id: 'NL-RADAR-001', name: 'Terrasse - Mur', type: 'Radar 60GHz', status: 'online', battery: 100, lastSeen: 'Il y a 10s' },
+            { id: 'NL-RADAR-002', name: 'Piscine - Mur', type: 'Radar 60GHz', status: 'offline', battery: 15, lastSeen: 'Il y a 2h' }
+          ]
+          this.renderChart()
+        },
+        renderChart() {
+          const ctx = this.$refs.chartRef?.getContext('2d')
+          if (!ctx) return
+          
+          new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:59'],
+              datasets: [{
+                label: 'Personnes détectées',
+                data: [0, 0, 2, 4, 3, 12, 8],
+                borderColor: '#059669',
+                backgroundColor: 'rgba(5, 150, 105, 0.1)',
+                fill: true,
+                tension: 0.4
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  ticks: { stepSize: 2 }
+                }
+              }
+            }
+          })
+        }
+      }
+    }).mount('#app')
+  </script>
+</body>
+</html>

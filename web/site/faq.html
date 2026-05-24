@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ | NOISYLESS</title>
+    <meta name="description" content="Questions fréquentes sur NOISYLESS : installation, RGPD, autonomie, détection.">
+    <link rel="canonical" href="https://noisyless.com/faq">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #FFFFFF; --bg-alt: #F5F5F3; --ink: #1A1A1A; --ink-light: #5A5A5A;
+            --border: #E0E0E0; --signal: #FF6B00;
+            --font-display: 'Space Mono', monospace; --font-body: 'IBM Plex Sans', sans-serif;
+        }
+        body { font-family: var(--font-body); background: var(--bg); color: var(--ink); line-height: 1.6; }
+        .container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+        header { border-bottom: 1px solid var(--border); padding: 20px 0; }
+        .header-inner { display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--ink); }
+        .logo img { height: 32px; width: auto; }
+        .logo-text { font-family: var(--font-display); font-weight: 700; }
+        nav a { color: var(--ink); text-decoration: none; font-family: var(--font-display); font-size: 0.875rem; margin-left: 24px; }
+        
+        .hero { padding: 60px 0; border-bottom: 1px solid var(--border); text-align: center; }
+        .hero h1 { font-family: var(--font-display); font-size: 2.5rem; margin-bottom: 16px; }
+        .hero p { color: var(--ink-light); max-width: 600px; margin: 0 auto; }
+        
+        .faq { padding: 60px 0; }
+        details { margin-bottom: 16px; border: 1px solid var(--border); }
+        summary { padding: 20px; cursor: pointer; font-family: var(--font-display); font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+        summary::-webkit-details-marker { display: none; }
+        summary::after { content: '+'; font-size: 1.5rem; color: var(--signal); }
+        details[open] summary::after { content: '−'; }
+        details[open] summary { border-bottom: 1px solid var(--border); }
+        .faq-answer { padding: 20px; font-size: 0.9375rem; color: var(--ink-light); }
+        .faq-answer p { margin-bottom: 12px; }
+        .faq-answer p:last-child { margin-bottom: 0; }
+        
+        footer { padding: 40px 0; border-top: 1px solid var(--border); text-align: center; font-size: 0.875rem; color: var(--ink-light); }
+        footer a { color: var(--ink-light); margin: 0 8px; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-inner">
+            <a href="/" class="logo">
+                <img src="/assets/logohorizmonochrome.png" alt="NOISYLESS">
+            </a>
+            <nav>
+                <a href="/">Accueil</a>
+                <a href="/produits/noisyless-simple.html">Produits</a>
+                <a href="/faq.html">FAQ</a>
+                <a href="https://platform.noisyless.com">Dashboard</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>Questions fréquentes</h1>
+            <p>Installation, conformité RGPD, autonomie, détection. Tout ce que vous devez savoir.</p>
+        </div>
+    </section>
+
+    <section class="faq">
+        <div class="container">
+            <details itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <summary itemprop="name">Comment installer les capteurs ?</summary>
+                <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <div class="faq-answer" itemprop="text">
+                        <p><strong>En 2 minutes, sans perçage :</strong></p>
+                        <p>1. Branchez le capteur en USB-C sur une prise secteur<br>
+                        2. Scannez le QR code pour le connecter au WiFi<br>
+                        3. Fixez au mur avec l'adhésif 3M VHB fourni (ou vis)<br>
+                        4. Le capteur apparaît dans votre dashboard</p>
+                        <p>Aucune configuration technique requise. Le firmware est pré-configuré.</p>
+                    </div>
+                </div>
+            </details>
+            
+            <details itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <summary itemprop="name">Est-ce conforme au RGPD ?</summary>
+                <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <div class="faq-answer" itemprop="text">
+                        <p><strong>Oui, 100%.</strong> NOISYLESS ne collecte aucune donnée personnelle :</p>
+                        <p>• Aucune image ou vidéo<br>
+                        • Aucun enregistrement audio<br>
+                        • Uniquement des métadonnées anonymes : niveau sonore dB(A), CO₂, présence binaire</p>
+                        <p>Les données sont hébergées en Allemagne (Hetzner), exportables et supprimables à tout moment. DPO désigné.</p>
+                    </div>
+                </div>
+            </details>
+            
+            <details itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <summary itemprop="name">Quelle est l'autonomie sur batterie ?</summary>
+                <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <div class="faq-answer" itemprop="text">
+                        <p>NOISYLESS Simple est conçu pour une <strong>alimentation secteur USB-C</strong> (incluse).</p>
+                        <p>Pour les modèles HeatMap (précommande Q3 2026) :<br>
+                        • Intérieur ToF : 6-12 mois sur batterie 18650<br>
+                        • Extérieur Radar : 3-6 mois avec panneau solaire</p>
+                    </div>
+                </div>
+            </details>
+            
+            <details itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <summary itemprop="name">Peut-on détecter une fête ?</summary>
+                <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <div class="faq-answer" itemprop="text">
+                        <p><strong>Oui, en moins de 5 secondes.</strong> Configurez un seuil (ex: 65 dB) et une plage horaire (ex: 22h-7h).</p>
+                        <p>Lorsque le seuil est dépassé, vous recevez une alerte Telegram/SMS/email avec :</p>
+                        <p>• L'adresse du logement<br>
+                        • Le niveau sonore actuel<br>
+                        • Un lien vers le dashboard en temps réel</p>
+                    </div>
+                </div>
+            </details>
+            
+            <details itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <summary itemprop="name">Les capteurs sont-ils discrets ?</summary>
+                <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <div class="faq-answer" itemprop="text">
+                        <p>Oui. Boîtier blanc 9×9×2,5 cm, design minimaliste. Une fois fixé au mur (hauteur recommandée : 1,80m), il se fond dans le décor.</p>
+                        <p>Aucun voyant lumineux en fonctionnement normal (désactivable).</p>
+                    </div>
+                </div>
+            </details>
+            
+            <details itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <summary itemprop="name">Que se passe-t-il en cas de coupure WiFi ?</summary>
+                <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <div class="faq-answer" itemprop="text">
+                        <p>Le capteur continue de mesurer et stocke les données en mémoire locale (30 jours).</p>
+                        <p>Dès que le WiFi revient, il synchronise l'historique manquant. Aucune donnée n'est perdue.</p>
+                    </div>
+                </div>
+            </details>
+            
+            <details itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <summary itemprop="name">Proposez-vous un essai gratuit ?</summary>
+                <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <div class="faq-answer" itemprop="text">
+                        <p><strong>Oui, 5 capteurs gratuits pendant 3 mois.</strong> Sans engagement, sans CB.</p>
+                        <p>Nous vous accompagnons de la configuration au déploiement. Si vous êtes convaincu, vous commandez le reste du parc.</p>
+                        <p><a href="/pilote.html" style="color: var(--signal);">Demander un pilote →</a></p>
+                    </div>
+                </div>
+            </details>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>© 2026 NOISYLESS — ELEC-CORE / MBHREP</p>
+            <p style="margin-top: 8px;">
+                <a href="/mentions-legales.html">Mentions légales</a>
+                <a href="/confidentialite.html">Confidentialité</a>
+                <a href="/cgv.html">CGV</a>
+            </p>
+        </div>
+    </footer>
+</body>
+</html>

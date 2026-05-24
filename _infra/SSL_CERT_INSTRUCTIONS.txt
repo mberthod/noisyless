@@ -1,0 +1,56 @@
+===========================================
+LET'S ENCRYPT - DNS TXT RECORDS TO ADD
+===========================================
+
+Record 1:
+---------
+Type:   TXT
+Name:   _acme-challenge.platform.noisyless.com
+Value:  w5M-4ZML-ievZUAoyMdD2pG4yUs_ZdWgwhdhe6HkXlc
+TTL:    300
+
+Record 2:
+---------
+Type:   TXT
+Name:   _acme-challenge.api.platform.noisyless.com
+Value:  t56wDsqSqw2groeVfFJiDOM31wOjxggeJd6KOxW3q3k
+TTL:    300
+
+===========================================
+INSTRUCTIONS:
+===========================================
+
+1. Go to your DNS registrar (OVH, Gandi, Cloudflare, etc.)
+
+2. Add BOTH TXT records above
+
+3. Wait 2-10 minutes for DNS propagation
+
+4. Verify with:
+   dig _acme-challenge.platform.noisyless.com TXT
+   dig _acme-challenge.api.platform.noisyless.com TXT
+
+5. Once both records return the correct values,
+   the SSL certificate can be generated
+
+===========================================
+COMMAND TO GENERATE CERTIFICATE (after DNS):
+===========================================
+
+ssh -i ~/.ssh/id_ed25519 noisyless@91.99.26.43
+
+cd /opt/noisyless
+
+docker run --rm \
+  -v /opt/noisyless/nginx/ssl:/etc/letsencrypt \
+  certbot/certbot certonly --manual \
+  -d platform.noisyless.com \
+  -d api.platform.noisyless.com \
+  --email contact@noisyless.com \
+  --agree-tos --non-interactive \
+  --preferred-challenges dns
+
+Then restart nginx:
+docker compose restart nginx
+
+===========================================
