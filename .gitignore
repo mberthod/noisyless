@@ -1,0 +1,6 @@
+
+# Certificats LetsEncrypt (root-owned)
+**/ssl/accounts/
+
+# KiCad temp history (résidu fréquent)
+**/hardware/kicad/.history/
