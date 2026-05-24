@@ -844,6 +844,11 @@ void setup() {
   digitalWrite(PIN_LED_G, HIGH);
   digitalWrite(PIN_LED_B, HIGH);
 
+  // ====== FORCE OTA CHECK AT BOOT ======
+  Serial.println("[OTA] Forcing OTA check at boot...");
+  checkOtaManifestAndUpdate();
+  // =====================================
+
   // Mutex partagé
   g_sharedMutex = xSemaphoreCreateMutex();
 
