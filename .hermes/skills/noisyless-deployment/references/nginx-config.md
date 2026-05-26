@@ -1,0 +1,117 @@
+# Nginx Configuration — NOISYLESS
+
+## Fichier : `/opt/noisyless/nginx/nginx.conf`
+
+```nginx
+events {
+    worker_connections 1024;
+}
+
+http {
+    upstream api_backend {
+        server api:8000;
+    }
+
+    server {
+        listen 80;
+        server_name _;
+        return 301 https://$host$request_uri;
+    }
+
+    server {
+        listen 443 ssl;
+        server_name _;
+
+        ssl_certificate /etc/nginx/ssl/live/platform.noisyless.com/fullchain.pem;
+        ssl_certificate_key /etc/nginx/ssl/live/platform.noisyless.com/privkey.pem;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+
+        # Static files - served directly (ORDRE IMPORTANT)
+        location ~* \.(html|css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
+            root /var/www/static;
+            expires 1d;
+        }
+
+        # API proxy with CORS
+        location /api/ {
+            add_header Access-Control-Allow-Origin "*" always;
+            add_header Access-Control-Allow-Methods "GET, POST, OPTIONS" always;
+            add_header Access-Control-Allow-Headers "Content-Type, Authorization" always;
+            if ($request_method = OPTIONS) {
+                return 204;
+            }
+            proxy_pass http://api_backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Auth routes
+        location /auth/ {
+            proxy_pass http://api_backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Shop routes (Stripe) with CORS
+        location /shop/ {
+            add_header Access-Control-Allow-Origin "*" always;
+            add_header Access-Control-Allow-Methods "GET, POST, OPTIONS" always;
+            add_header Access-Control-Allow-Headers "Content-Type, Authorization" always;
+            if ($request_method = OPTIONS) {
+                return 204;
+            }
+            proxy_pass http://api_backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Health check
+        location /health {
+            proxy_pass http://api_backend/health;
+        }
+
+        # Root - SPA fallback to index.html (DOIT ÊTRE EN DERNIER)
+        location / {
+            try_files $uri $uri/ /static/index.html;
+        }
+    }
+}
+```
+
+## Ordre critique des locations
+
+**À FAIRE** :
+1. `/static/` avec `alias`
+2. Extensions statiques `~* \.(html|css|js|...)$` avec `root`
+3. Proxy locations (`/api/`, `/auth/`, `/shop/`)
+4. `/health`
+5. `/` fallback SPA **en dernier**
+
+**ERREUR FRÉQUENTE** : Mettre le fallback SPA avant les fichiers statiques → `merci.html` et `annule.html` retournent `index.html`.
+
+## Redémarrage
+
+```bash
+ssh noisyless@91.99.26.43 "cd /opt/noisyless && docker compose restart nginx"
+```
+
+## Vérification
+
+```bash
+# Test merci.html
+curl -s https://noisyless.com/merci.html --insecure | grep "<title>"
+
+# Test annule.html
+curl -s https://noisyless.com/annule.html --insecure | grep "<title>"
+
+# Doit afficher :
+# <title>Merci pour votre commande | NOISYLESS</title>
+# <title>Paiement annulé | NOISYLESS</title>
+```

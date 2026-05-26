@@ -1,0 +1,64 @@
+===========================================
+LET'S ENCRYPT - DNS TXT RECORDS TO ADD
+===========================================
+
+Record 1:
+---------
+Type:   TXT
+Name:   _acme-challenge.platform.noisyless.com
+Value:  WaUmYK4D6NbSPXinoIFA1tASs8arX0h_qP_ewMZX3ls
+TTL:    300
+
+Record 2:
+---------
+Type:   TXT
+Name:   _acme-challenge.api.platform.noisyless.com
+Value:  2Y5--9kH-wtZEfFNNX0DlxlOk-4A6R06IxBlkQGQ9Ko
+TTL:    300
+
+===========================================
+INSTRUCTIONS:
+===========================================
+
+1. Update BOTH TXT records above in your DNS registrar
+   (REPLACE the old values with these new ones)
+
+2. Wait 2-10 minutes for DNS propagation
+
+3. Verify with:
+   dig @8.8.8.8 _acme-challenge.platform.noisyless.com TXT
+   dig @8.8.8.8 _acme-challenge.api.platform.noisyless.com TXT
+
+4. Once both records return the correct values,
+   run the command below IMMEDIATELY
+
+===========================================
+COMMAND TO GENERATE CERTIFICATE:
+===========================================
+
+printf '\n\n' | docker run --rm -i \
+  -v /home/mathieu/Kdrive/01_CLIENTS/NOISYLESS/_infra/nginx/ssl:/etc/letsencrypt \
+  -v /home/mathieu/Kdrive/01_CLIENTS/NOISYLESS/_infra/nginx/ssl-data:/var/lib/letsencrypt \
+  certbot/certbot certonly --manual \
+  -d platform.noisyless.com \
+  -d api.platform.noisyless.com \
+  --email contact@noisyless.com \
+  --agree-tos \
+  --preferred-challenges dns \
+  --keep-until-expiring
+
+===========================================
+AFTER CERTIFICATE GENERATION:
+===========================================
+
+1. Certificates will be in:
+   /home/mathieu/Kdrive/01_CLIENTS/NOISYLESS/_infra/nginx/ssl/live/platform.noisyless.com/
+
+2. Restart nginx:
+   cd /home/mathieu/Kdrive/01_CLIENTS/NOISYLESS/_infra
+   docker compose restart nginx
+
+3. Verify HTTPS is working:
+   curl -k https://platform.noisyless.com
+
+===========================================

@@ -1,0 +1,87 @@
+===========================================
+IMPORTANT - READ CAREFULLY
+===========================================
+
+PROBLEM: Let's Encrypt has cached your old DNS records.
+You must DELETE all old _acme-challenge records first.
+
+===========================================
+STEP 1: DELETE OLD DNS RECORDS
+===========================================
+
+Go to your DNS registrar (OVH, Gandi, Cloudflare, etc.)
+
+DELETE these records if they exist:
+  - _acme-challenge.platform.noisyless.com
+  - _acme-challenge.api.platform.noisyless.com
+
+Wait 5-10 minutes after deletion.
+
+===========================================
+STEP 2: RUN CERTBOT TO GET NEW TOKENS
+===========================================
+
+Run this command:
+
+ssh -i ~/.ssh/id_ed25519 noisyless@91.99.26.43
+
+cd /opt/noisyless
+
+docker run --rm -it \
+  -v /opt/noisyless/nginx/ssl:/etc/letsencrypt \
+  certbot/certbot certonly --manual \
+  -d platform.noisyless.com \
+  -d api.platform.noisyless.com \
+  --email contact@noisyless.com \
+  --agree-tos \
+  --preferred-challenges dns
+
+Certbot will show you 2 NEW tokens.
+
+===========================================
+STEP 3: ADD NEW DNS RECORDS
+===========================================
+
+Add these 2 TXT records (use the tokens certbot shows you):
+
+Record 1:
+  Type:  TXT
+  Name:  _acme-challenge.platform.noisyless.com
+  Value: [token from certbot for platform]
+
+Record 2:
+  Type:  TXT
+  Name:  _acme-challenge.api.platform.noisyless.com
+  Value: [token from certbot for api]
+
+===========================================
+STEP 4: VERIFY DNS
+===========================================
+
+Run these commands:
+
+dig @8.8.8.8 _acme-challenge.platform.noisyless.com TXT
+dig @8.8.8.8 _acme-challenge.api.platform.noisyless.com TXT
+
+Make sure the values match EXACTLY what certbot showed you.
+
+===========================================
+STEP 5: CONTINUE CERTBOT
+===========================================
+
+Press Enter in the certbot terminal.
+
+If successful, you will see:
+  "Congratulations! Your certificate and chain have been saved"
+
+===========================================
+STEP 6: RESTART NGINX
+===========================================
+
+cd /opt/noisyless
+docker compose restart nginx
+
+Test:
+  curl -k https://platform.noisyless.com
+
+===========================================

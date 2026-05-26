@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog | NOISYLESS</title>
+    <meta name="description" content="Articles sur la détection de bruit, RGPD, suroccupation et monitoring environnemental pour locations courte durée.">
+    <link rel="canonical" href="https://noisyless.com/blog">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #FFFFFF; --bg-alt: #F5F5F3; --ink: #1A1A1A; --ink-light: #5A5A5A;
+            --border: #E0E0E0; --signal: #FF6B00;
+            --font-display: 'Space Mono', monospace; --font-body: 'IBM Plex Sans', sans-serif;
+        }
+        body { font-family: var(--font-body); background: var(--bg); color: var(--ink); line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+        header { border-bottom: 1px solid var(--border); padding: 20px 0; }
+        .header-inner { display: flex; justify-content: space-between; align-items: center; }
+        .logo img { height: 32px; width: auto; }
+        nav a { color: var(--ink); text-decoration: none; font-family: var(--font-display); font-size: 0.875rem; margin-left: 24px; }
+        nav a:hover { color: var(--signal); }
+        
+        .hero { padding: 60px 0; border-bottom: 1px solid var(--border); text-align: center; }
+        .hero h1 { font-family: var(--font-display); font-size: 2.5rem; margin-bottom: 16px; }
+        .hero p { color: var(--ink-light); max-width: 600px; margin: 0 auto; }
+        
+        .blog-grid { padding: 60px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+        @media (max-width: 900px) { .blog-grid { grid-template-columns: 1fr; } }
+        
+        .article-card { border: 1px solid var(--border); padding: 32px; transition: border-color 0.2s; }
+        .article-card:hover { border-color: var(--signal); }
+        .article-card h2 { font-family: var(--font-display); font-size: 1.25rem; margin-bottom: 12px; }
+        .article-card .meta { font-family: var(--font-display); font-size: 0.75rem; color: var(--ink-light); margin-bottom: 16px; }
+        .article-card p { font-size: 0.9375rem; color: var(--ink-light); margin-bottom: 20px; }
+        .article-card a { color: var(--signal); text-decoration: none; font-family: var(--font-display); font-size: 0.875rem; }
+        .article-card a:hover { text-decoration: underline; }
+        
+        footer { padding: 40px 0; border-top: 1px solid var(--border); text-align: center; font-size: 0.875rem; color: var(--ink-light); }
+        footer a { color: var(--ink-light); margin: 0 8px; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-inner">
+            <a href="/" class="logo">
+                <img src="/assets/logohorizmonochrome.png" alt="NOISYLESS">
+            </a>
+            <nav>
+                <a href="/">Accueil</a>
+                <a href="/produits/noisyless-simple.html">Produits</a>
+                <a href="/faq.html">FAQ</a>
+                <a href="/blog/">Blog</a>
+                <a href="https://platform.noisyless.com">Dashboard</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>Blog</h1>
+            <p>Monitoring environnemental, conformité RGPD, détection de nuisances. Conseils pour gestionnaires de parc immobilier.</p>
+        </div>
+    </section>
+
+    <section class="blog-grid">
+        <article class="article-card">
+            <h2>Détecter une fête Airbnb sans caméra</h2>
+            <div class="meta">24 mai 2026 · 5 min</div>
+            <p>Méthodes légales et conformes RGPD pour identifier les fêtes et suroccupations sans surveiller les occupants.</p>
+            <a href="/blog/detecter-fete-airbnb-sans-camera.html">Lire →</a>
+        </article>
+        
+        <article class="article-card">
+            <h2>Capteurs IoT et RGPD : guide de conformité</h2>
+            <div class="meta">24 mai 2026 · 8 min</div>
+            <p>Comment déployer des capteurs de bruit et d'occupation en respectant le RGPD. Données collectées, durée, export.</p>
+            <a href="/blog/rgpd-capteurs-location-conformite.html">Lire →</a>
+        </article>
+        
+        <article class="article-card">
+            <h2>Suroccupation : comment la détecter légalement</h2>
+            <div class="meta">24 mai 2026 · 6 min</div>
+            <p>Techniques d'estimation d'occupation par inference (PIR, ToF, CO₂) sans identification des personnes.</p>
+            <a href="/blog/suroccupation-location-courte-duree.html">Lire →</a>
+        </article>
+        
+        <article class="article-card">
+            <h2>Détecteur de bruit Airbnb : est-ce légal ?</h2>
+            <div class="meta">24 mai 2026 · 7 min</div>
+            <p>Cadre juridique français et européen. Ce que dit la loi, ce que permettent les capteurs, les limites.</p>
+            <a href="/blog/detecteur-bruit-airbnb-legal.html">Lire →</a>
+        </article>
+        
+        <article class="article-card">
+            <h2>Nuisances sonores en copropriété : obligations</h2>
+            <div class="meta">24 mai 2026 · 6 min</div>
+            <p>Réglementation des bruits de voisinage, seuils dB, horaires. Comment prouver sans enregistrer.</p>
+            <a href="/blog/nuisances-sonores-copropriete.html">Lire →</a>
+        </article>
+        
+        <article class="article-card">
+            <h2>Channel managers : quel monitoring intégrer ?</h2>
+            <div class="meta">24 mai 2026 · 5 min</div>
+            <p>Comparatif des solutions de monitoring pour les gestionnaires de parc. APIs, webhooks, intégrations.</p>
+            <a href="/blog/channel-managers-monitoring.html">Lire →</a>
+        </article>
+        
+        <article class="article-card">
+            <h2>Minut vs NOISYLESS : comparatif 2026</h2>
+            <div class="meta">24 mai 2026 · 10 min</div>
+            <p>Analyse détaillée des deux solutions de détection de fêtes. Prix, conformité, fonctionnalités, support.</p>
+            <a href="/blog/minut-vs-noisyless-comparatif.html">Lire →</a>
+        </article>
+        
+        <article class="article-card">
+            <h2>Vapotage et cigarette : détection automatique</h2>
+            <div class="meta">24 mai 2026 · 4 min</div>
+            <p>Capteurs de COV et particules fines pour identifier le tabagisme en intérieur. Seuils et alertes.</p>
+            <a href="/blog/vapotage-cigarette-location-detection.html">Lire →</a>
+        </article>
+        
+        <article class="article-card">
+            <h2>Dégât des eaux : vanne de coupure automatique</h2>
+            <div class="meta">24 mai 2026 · 5 min</div>
+            <p>Détecteurs de fuite et vannes motorisées. Comment prévenir les dégâts majeurs en 30 secondes.</p>
+            <a href="/blog/degat-des-eaux-vanne-coupure-automatique.html">Lire →</a>
+        </article>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>© 2026 NOISYLESS — ELEC-CORE / MBHREP</p>
+            <p style="margin-top: 8px;">
+                <a href="/mentions-legales.html">Mentions légales</a>
+                <a href="/confidentialite.html">Confidentialité</a>
+                <a href="/cgv.html">CGV</a>
+            </p>
+        </div>
+    </footer>
+</body>
+</html>

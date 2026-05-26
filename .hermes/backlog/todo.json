@@ -1,0 +1,364 @@
+{
+  "version": "4.0",
+  "generated": "2026-05-24",
+  "source": "Kdrive/01_CLIENTS/NOISYLESS/NEWTODO.md",
+  "priority_order": "web > api > infra > firmware",
+  "hardware": "exclu (Mathieu)",
+  "tasks": [
+    {
+      "id": "stripe-01",
+      "status": "done",
+      "priority": 0,
+      "blocked_reason": "Besoin clé Stripe LIVE manuelle — cron sans utilisateur",
+      "goal": "Régénérer la clé Stripe LIVE. Aller sur https://dashboard.stripe.com/apikeys → Create secret key → copier sk_live_... Mettre à jour /opt/noisyless/.env → STRIPE_SECRET_KEY=sk_live_... Redémarrer le conteneur api (docker compose restart api).",
+      "context": "Tâche semi-manuelle: Hermes ne peut pas accéder au dashboard Stripe. L'utilisateur doit fournir la clé. Une fois fournie, Hermes fait le reste: ssh noisyless@91.99.26.43 → nano .env → restart api → curl test.",
+      "tags": [
+        "stripe",
+        "devops",
+        "p0"
+      ]
+    },
+    {
+      "id": "stripe-02",
+      "status": "done",
+      "priority": 0,
+      "blocked_reason": "Dépend de stripe-01 (clé Stripe LIVE)",
+      "goal": "Tester l'endpoint /shop/checkout avec la nouvelle clé Stripe LIVE. curl -X POST vers /shop/checkout avec items, email, name. Vérifier réponse JSON avec session_id + url Stripe.",
+      "context": "ssh noisyless@91.99.26.43. curl -X POST http://localhost:8000/shop/checkout -H 'Content-Type: application/json' -d '{...}'. Le conteneur api doit avoir la nouvelle clé Stripe. Si 500 → vérifier docker logs api. Si URL Stripe retournée → succès.",
+      "tags": [
+        "stripe",
+        "api",
+        "test",
+        "p0"
+      ]
+    },
+    {
+      "id": "web-01",
+      "status": "done",
+      "priority": 1,
+      "goal": "Ajouter le formulaire d'achat (bouton Acheter) dans web/site/index.html : email, name, bouton submit qui appelle fetch('/shop/checkout') et redirige vers Stripe.",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/web/site/index.html. Code fourni dans NEWTODO.md section 1.3. Insérer le form dans la section produit, ajouter le script startCheckout(). Tester: clic bouton → redirection Stripe Checkout.",
+      "tags": [
+        "web",
+        "stripe",
+        "p1"
+      ]
+    },
+    {
+      "id": "web-02",
+      "status": "done",
+      "priority": 1,
+      "goal": "Créer la page /merci.html (confirmation de commande). Afficher nom, email, session_id depuis les paramètres URL. Style: centré, simple, noindex.",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/web/site/merci.html. Code complet dans NEWTODO.md section 1.4. Fichier statique, pas besoin de backend. Juste créer le fichier HTML.",
+      "tags": [
+        "web",
+        "stripe",
+        "p1"
+      ]
+    },
+    {
+      "id": "web-03",
+      "status": "done",
+      "priority": 1,
+      "goal": "Créer la page /annule.html (paiement annulé). Message rassurant: 'Aucun montant débité'. Bouton retour au site. Style: centré, noindex.",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/web/site/annule.html. Code dans NEWTODO.md section 1.5. Fichier statique simple.",
+      "tags": [
+        "web",
+        "stripe",
+        "p1"
+      ]
+    },
+    {
+      "id": "web-04",
+      "status": "done",
+      "priority": 1,
+      "goal": "Corriger le title tag de index.html : passer de 78 chars à <60 chars. Nouveau: 'Détecteur de bruit Airbnb sans caméra | NOISYLESS'. Mettre à jour meta description 150-160 chars.",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/web/site/index.html. Code dans NEWTODO.md section 2.2. Vérifier longueur title (49-58 chars OK). Description: 'NOISYLESS protège 247+ gestionnaires Airbnb...' (158 chars).",
+      "tags": [
+        "web",
+        "seo",
+        "p1"
+      ]
+    },
+    {
+      "id": "web-05",
+      "status": "done",
+      "priority": 1,
+      "goal": "Corriger la copie dans index.html : remplacer 'surpopulation' → 'suroccupation', corriger les caractères corrompus '识别ables' → 'identifiables'.",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/web/site/index.html. sed -i 's/surpopulation/suroccupation/g' puis remplacer les caractères Unicode corrompus. Vérifier avec git diff.",
+      "tags": [
+        "web",
+        "seo",
+        "p1"
+      ]
+    },
+    {
+      "id": "web-06",
+      "status": "done",
+      "priority": 1,
+      "goal": "Convertir le site one-pager (ancres #) en URLs réelles multi-pages. Créer: produits/noisyless-simple.html, boutique.html, faq.html. Chaque page avec title/meta/H1 uniques.",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/web/site/. Extraire les sections du index.html actuel. Section #produit → produits/noisyless-simple.html. Section #shop → boutique.html. Section #faq → faq.html (existant ?). Vérifier 200 OK sur chaque.",
+      "tags": [
+        "web",
+        "seo",
+        "p1"
+      ]
+    },
+    {
+      "id": "api-01",
+      "status": "done",
+      "priority": 1,
+      "goal": "Ajouter l'endpoint webhook Stripe dans backend/api/shop.py. Recevoir les événements checkout.session.completed, logger les paiements confirmés.",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/backend/api/shop.py. Code dans NEWTODO.md section 1.6. Dépend de stripe-02. Ajouter @router.post('/webhook'), vérifier signature Stripe, logger. Redéployer api.",
+      "tags": [
+        "api",
+        "stripe",
+        "p1"
+      ]
+    },
+    {
+      "id": "api-02",
+      "status": "done",
+      "priority": 1,
+      "goal": "Créer la table orders + order_items dans TimescaleDB. SQL: orders (id UUID, stripe_session_id, email, name, amount, status) + order_items (order_id FK, product_id, quantity, unit_amount).",
+      "context": "Fichier SQL à créer dans 01_CLIENTS/NOISYLESS/_infra/timescaledb/init/02_orders.sql. Code dans NEWTODO.md section 1.7. Puis redémarrer timescaledb ou exécuter manuellement via psql sur le serveur.",
+      "tags": [
+        "api",
+        "db",
+        "stripe",
+        "p1"
+      ]
+    },
+    {
+      "id": "api-03",
+      "status": "done",
+      "priority": 1,
+      "goal": "Créer le module emails.py pour l'envoi de confirmation de commande via SMTP OVH. Fonction send_order_confirmation(email, name, order_id, amount).",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/backend/api/emails.py. Code dans NEWTODO.md section 1.8. SMTP: ssl0.ovh.net:465, user contact@noisyless.com. Ajouter les variables SMTP dans docker-compose.",
+      "tags": [
+        "api",
+        "email",
+        "p1"
+      ]
+    },
+    {
+      "id": "api-04",
+      "status": "done",
+      "result": "Variables STRIPE_WEBHOOK_SECRET, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD ajoutées dans docker-compose.yml, déployées sur 91.99.26.43, conteneur api redémarré et OK.",
+      "priority": 1,
+      "goal": "Ajouter STRIPE_WEBHOOK_SECRET et variables SMTP dans docker-compose.yml puis redéployer.",
+      "context": "Fichier 01_CLIENTS/NOISYLESS/_infra/docker-compose.yml. Ajouter STRIPE_WEBHOOK_SECRET, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD dans la section api.environment. Puis rsync + rebuild.",
+      "tags": [
+        "api",
+        "devops",
+        "p1"
+      ]
+    },
+    {
+      "id": "seo-01",
+      "status": "done",
+      "priority": 2,
+      "goal": "Ajouter la section FAQ (6 questions) dans index.html avec balisage Schema.org FAQPage. Questions: installation, RGPD, autonomie, détection fête, capteurs dispos, abonnement.",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/web/site/index.html. Code HTML complet dans NEWTODO.md section 2.3. Balises <details itemscope itemprop='mainEntity'> pour chaque question. Vérifier avec Google Rich Results Test.",
+      "tags": [
+        "web",
+        "seo",
+        "p2"
+      ]
+    },
+    {
+      "id": "seo-02",
+      "status": "done",
+      "priority": 2,
+      "goal": "Ajouter JSON-LD Schema.org (Product + Organization) dans le <head> de index.html. Product: NOISYLESS Simple 79€. Organization: logo, contact, description.",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/web/site/index.html. Code JSON-LD dans NEWTODO.md section 2.4. Deux blocs <script type='application/ld+json'>. Valider sur search.google.com/test/rich-results.",
+      "tags": [
+        "web",
+        "seo",
+        "p2"
+      ]
+    },
+    {
+      "id": "seo-03",
+      "status": "done",
+      "priority": 2,
+      "result": "robots.txt créé et déployé sur /opt/noisyless/static/robots.txt. Nginx le sert correctement (confirmé via curl direct VPS). Le cache Cloudflare sert l'ancien fallback index.html — nécessite purge (cf. infra-04).",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/web/site/robots.txt. Contenu dans NEWTODO.md section 2.5. Tester: curl https://noisyless.com/robots.txt → 200 OK.",
+      "tags": [
+        "web",
+        "seo",
+        "p2"
+      ]
+    },
+    {
+      "id": "seo-04",
+      "status": "blocked",
+      "result": "Sitemap créé localement (XML validé), URLs distantes OK, déploiement bloqué par règle sécurité (IP brute). Fichier prêt: ~/.hermes-mbhrep/knowledge/elec-core/projects/NOISYLESS/web/site/sitemap.xml — scp manuel requis.",
+      "priority": 2,
+      "goal": "Créer sitemap.xml listant toutes les URL: /, /produits/noisyless-simple, /boutique, /faq, /confidentialite, /mentions-legales, /cgv. Priorités correctes.",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/web/site/sitemap.xml. XML dans NEWTODO.md section 2.6. Valider XML well-formed. Dépend de web-06 (URLs réelles créées).",
+      "tags": [
+        "web",
+        "seo",
+        "p2"
+      ]
+    },
+    {
+      "id": "seo-05",
+      "status": "done",
+      "priority": 2,
+      "goal": "Créer llms.txt pour les AI crawlers. Description NOISYLESS, produits, abonnements, chiffres clés. Au moins 30 lignes.",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/web/site/llms.txt. Contenu dans NEWTODO.md section 2.7. Tester: curl https://noisyless.com/llms.txt → 200 OK.",
+      "tags": [
+        "web",
+        "seo",
+        "p2"
+      ]
+    },
+    {
+      "id": "seo-06",
+      "status": "done",
+      "result": "Blog déployé: 9 articles + index vers /opt/noisyless/static/blog/. Nginx OK, toutes les URLs testées 200/301.",
+      "priority": 2,
+      "goal": "Déployer les 9 articles du blog depuis noisyless-deployment/blog/ vers web/site/blog/. Créer une page index listant les articles. Chaque article en HTML accessible.",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/noisyless-deployment/blog/ (9 fichiers .md). Les convertir en HTML ou les servir en markdown. Créer web/site/blog/index.html listant tous les articles. Test: /blog/article-1 → 200 OK.",
+      "tags": [
+        "web",
+        "seo",
+        "blog",
+        "p2"
+      ]
+    },
+    {
+      "id": "seo-07",
+      "status": "done",
+      "result": "faq.html créé (3387 mots, 13 questions), balisage FAQPage JSON-LD complet (26 items), déployé sur /opt/noisyless/static/faq.html, 200 HTTPS OK.",
+      "priority": 2,
+      "goal": "Créer une page FAQ dédiée enrichie (faq.html, 2000+ mots). Reprendre les 6 questions de index.html + en ajouter 4-5 nouvelles. Balisage FAQPage JSON-LD complet.",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/web/site/faq.html. Questions supplémentaires: compatibilité WiFi, garantie, retour, expédition, support. Vérifier Rich Result OK, +2000 mots.",
+      "tags": [
+        "web",
+        "seo",
+        "p2"
+      ]
+    },
+    {
+      "id": "infra-01",
+      "status": "error",
+      "result": "ÉCHEC: sudo sur le VPS 91.99.26.43 exige un terminal pour l'authentification (mot de passe). Toutes les commandes ufw ont échoué. Besoin du mot de passe sudo noisyless ou d'une clé SSH avec NOPASSWD.",
+      "priority": 2,
+      "goal": "Configurer UFW firewall sur le VPS Hetzner. Autoriser uniquement ports 22, 80, 443, 1883. Bloquer tout le reste.",
+      "context": "ssh noisyless@91.99.26.43. Commandes dans NEWTODO.md section 3.4. ufw default deny incoming, allow ports, enable. Vérifier ufw status verbose.",
+      "tags": [
+        "infra",
+        "security",
+        "p2"
+      ]
+    },
+    {
+      "id": "infra-02",
+      "status": "done",
+      "result": "MQTT TLS port 8883 configuré : CA + cert serveur générés dans /opt/noisyless/mosquitto/certs/, mosquitto.conf mis à jour avec listener 8883 + TLS, redémarré OK, test mosquitto_pub local réussi.",
+      "goal": "Réparer MQTT TLS port 8883. Générer certificats, configurer mosquitto.conf, redémarrer, tester connexion SSL.",
+      "context": "ssh noisyless@91.99.26.43. Config mosquitto dans /opt/noisyless/mosquitto/. Générer CA + cert serveur avec openssl. Configurer listener 8883. Tester avec mosquitto_pub --cafile. NEWTODO.md section 3.3.",
+      "tags": [
+        "infra",
+        "mqtt",
+        "security",
+        "p2"
+      ]
+    },
+    {
+      "id": "infra-03",
+      "status": "done",
+      "result": "Script backup.sh créé et testé (21 Ko), cron quotidien 3h installé, rétention 30j. Doublons crontab nettoyés.",
+      "priority": 2,
+      "goal": "Mettre en place les backups automatisés TimescaleDB. Script /opt/noisyless/scripts/backup.sh avec pg_dump. Cron quotidien à 3h. Rétention 30 jours.",
+      "context": "ssh noisyless@91.99.26.43. Script bash: docker compose exec timescaledb pg_dump -U noisyless noisyless > backup.sql. Cron: 0 3 * * *. NEWTODO.md section 3.5.",
+      "tags": [
+        "infra",
+        "backup",
+        "p2"
+      ]
+    },
+    {
+      "id": "infra-04",
+      "status": "blocked",
+      "blocked_reason": "Tâche 100% manuelle — pas d'API key Cloudflare configurée, nécessite accès dashboard.cloudflare.com → Caching → Purge Everything. @Mathieu doit le faire manuellement.",
+      "priority": 2,
+      "goal": "Purger le cache Cloudflare après tous les déploiements web. Dashboard Cloudflare → Caching → Purge Everything.",
+      "context": "Tâche manuelle (pas d'API key Cloudflare). À faire après le déploiement complet du site. NEWTODO.md section 2.11.",
+      "tags": [
+        "infra",
+        "cdn",
+        "p2"
+      ]
+    },
+    {
+      "id": "fw-01",
+      "status": "blocked",
+      "blocked_reason": "Hardware ESP32-S3 non disponible. Le deep sleep test nécessite de flasher physiquement et mesurer la consommation réelle (normal ~80mA, deep sleep <100µA). En attente de Mathieu.",
+      "priority": 3,
+      "goal": "Tester le deep sleep sur le firmware #089 (si le hardware est prêt). Flasher ESP32-S3, mesurer conso: normal ~80mA, deep sleep <100µA. Ajuster timer wakeup.",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/202604_089_Capteur_Environnemental_V1/05_FIRMWARE/. Dépend du hardware dispo. NEWTODO.md section 4.1.",
+      "tags": [
+        "firmware",
+        "p3"
+      ]
+    },
+    {
+      "id": "fw-02",
+      "status": "done",
+      "result": "Firmware node-radar-60ghz créé : 4 composants (ms72sf1, mesh, config, mqtt) + main.c déstubé + PlatformIO config. 18 fichiers au total. UART parser MS72SF1 (header+TLV), ESP-NOW mesh avec type DATA_RADAR, MQTT master (JSON nl-map-out), health/battery monitoring, calibration NVS. Aucun TODO restant.",
+      "priority": 3,
+      "goal": "Créer le firmware node-radar-60ghz complet: composant radar_ms72sf1, parser UART TLV, publication MQTT. Dossier actuellement VIDE.",
+      "context": "Kdrive: 202605_091_HeatMap_Presence/firmware/node-radar-60ghz/ (vide). NEWTODO.md section 4.2. Créer composant, parser, intégration mesh ESP-NOW.",
+      "tags": [
+        "firmware",
+        "p3"
+      ]
+    },
+    {
+      "id": "legal-01",
+      "status": "blocked",
+      "blocked_reason": "Validation humaine requise — contenu légal (raison sociale, adresse, hébergement). @Mathieu doit valider avant publication.",
+      "priority": 4,
+      "goal": "Créer mentions-legales.html. Raison sociale, adresse, contact, hébergement. Template standard français.",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/web/site/mentions-legales.html. Nécessite validation humaine avant publication. NEWTODO.md section 5.1.",
+      "tags": [
+        "web",
+        "legal",
+        "p4",
+        "blocked"
+      ]
+    },
+    {
+      "id": "legal-02",
+      "status": "blocked",
+      "blocked_reason": "Validation humaine requise — politique RGPD (cookies, données, DPO). @Mathieu doit valider avant publication.",
+      "priority": 4,
+      "goal": "Créer confidentialite.html (politique de confidentialité RGPD). Cookies, données collectées, droits utilisateur, DPO.",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/web/site/confidentialite.html. Validation humaine requise. NEWTODO.md section 5.2.",
+      "tags": [
+        "web",
+        "legal",
+        "p4",
+        "blocked"
+      ]
+    },
+    {
+      "id": "legal-03",
+      "status": "blocked",
+      "blocked_reason": "Validation humaine requise — CGV (prix, livraison, rétractation, garantie). @Mathieu doit valider avant publication.",
+      "priority": 4,
+      "goal": "Créer cgv.html (conditions générales de vente). Prix, livraison, rétractation, garantie.",
+      "context": "Kdrive: 01_CLIENTS/NOISYLESS/web/site/cgv.html. Validation humaine requise. NEWTODO.md section 5.3.",
+      "tags": [
+        "web",
+        "legal",
+        "p4",
+        "blocked"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+# NOISYLESS
+
+> NOISYLESS est un fabricant de capteurs IoT pour la location courte durée (Airbnb,
+> locations saisonnières) et les conciergeries. Ses capteurs détectent les fêtes, la
+> suroccupation et la qualité d'air en temps réel, sans caméra ni enregistrement audio
+> (100 % RGPD), et alertent le gestionnaire avant toute plainte du voisinage.
+
+## Ce qui distingue NOISYLESS
+- Comptage de présence par capteur ToF et radar 60 GHz (fonctionne en appartement, contrairement aux solutions basées sur le WiFi).
+- Données hébergées en Europe (OVH France + base en Allemagne), aucun transfert hors UE, DPO désigné.
+- Mesure de qualité d'air (CO₂, température, humidité) en plus du bruit.
+- Gamme couvrant aussi la prévention des dégâts des eaux (détecteur de fuite + vanne de coupure automatique).
+- Aucune caméra, aucun micro d'enregistrement : conformité par conception.
+
+## Produits
+- NOISYLESS Simple (79 €) : bruit dB SPL, présence, qualité d'air.
+- HeatMap Intérieur (129 €) : comptage d'occupation par matrice ToF 16×16.
+- HeatMap Extérieur (199 €) : surveillance extérieure par radar 60 GHz.
+- Détecteur Fuite + Vanne (149 €) : coupure d'eau automatique anti-dégât des eaux.
+
+## Abonnements
+Starter 4,99 €/mois (jusqu'à 5 capteurs) · Pro 29,90 €/mois (illimité, API, webhooks).
+
+## Pour qui
+Hôtes Airbnb, conciergeries, gestionnaires de parc, propriétaires de villas premium.
+
+## Contact
+- Site : https://noisyless.com
+- Email : contact@noisyless.com
+- Éditeur : MBHREP / ELEC-CORE, Périgueux, France

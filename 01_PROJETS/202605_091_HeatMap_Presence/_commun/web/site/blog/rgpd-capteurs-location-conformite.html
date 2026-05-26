@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RGPD et capteurs en location : guide de conformité pour les hôtes | NOISYLESS</title>
+    <meta name="description" content="Installer des capteurs en location courte durée est conforme au RGPD si l'on respecte transparence, minimisation et absence d'enregistrement audio/vidéo. Guide pratique pour les hôtes.">
+    <link rel="canonical" href="https://noisyless.com/blog/rgpd-capteurs-location-conformite">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #FFFFFF; --bg-alt: #F5F5F3; --ink: #1A1A1A; --ink-light: #5A5A5A;
+            --border: #E0E0E0; --signal: #FF6B00;
+            --font-display: 'Space Mono', monospace; --font-body: 'IBM Plex Sans', sans-serif;
+        }
+        body { font-family: var(--font-body); background: var(--bg); color: var(--ink); line-height: 1.6; }
+        .container { max-width: 800px; margin: 0 auto; padding: 0 24px; }
+        header { border-bottom: 1px solid var(--border); padding: 20px 0; }
+        .header-inner { display: flex; justify-content: space-between; align-items: center; }
+        .logo img { height: 32px; width: auto; }
+        nav a { color: var(--ink); text-decoration: none; font-family: var(--font-display); font-size: 0.875rem; margin-left: 24px; }
+        nav a:hover { color: var(--signal); }
+        .article { padding: 60px 0; }
+        .article h1 { font-family: var(--font-display); font-size: 2rem; margin-bottom: 16px; }
+        .meta { font-family: var(--font-display); font-size: 0.75rem; color: var(--ink-light); margin-bottom: 32px; }
+        .article h2 { font-family: var(--font-display); font-size: 1.5rem; margin: 40px 0 20px; }
+        .article h3 { font-family: var(--font-display); font-size: 1.125rem; margin: 32px 0 16px; }
+        .article p { margin-bottom: 24px; }
+        .article strong { font-weight: 600; }
+        .article a { color: var(--signal); }
+        .back-link { display: inline-block; margin-bottom: 32px; color: var(--signal); text-decoration: none; font-family: var(--font-display); font-size: 0.875rem; }
+        .back-link:hover { text-decoration: underline; }
+        footer { padding: 40px 0; border-top: 1px solid var(--border); text-align: center; font-size: 0.875rem; color: var(--ink-light); }
+        footer a { color: var(--ink-light); margin: 0 8px; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-inner">
+            <a href="/" class="logo">
+                <img src="/assets/logohorizmonochrome.png" alt="NOISYLESS">
+            </a>
+            <nav>
+                <a href="/">Accueil</a>
+                <a href="/produits/noisyless-simple.html">Produits</a>
+                <a href="/faq.html">FAQ</a>
+                <a href="/blog/">Blog</a>
+                <a href="https://platform.noisyless.com">Dashboard</a>
+            </nav>
+        </div>
+    </header>
+
+    <article class="article">
+        <div class="container">
+            <a href="/blog/" class="back-link">← Retour au blog</a>
+            <h1>RGPD et capteurs en location : guide de conformité pour les hôtes</h1>
+            <div class="meta">2026-05-24 · L'équipe NOISYLESS</div>
+            <h1>RGPD et capteurs en location : guide de conformité pour les hôtes</h1>
+<strong>Installer des capteurs dans une location courte durée est conforme au RGPD à condition de respecter trois principes : la transparence (informer le voyageur), la minimisation (ne collecter que le strict nécessaire) et l'absence de tout enregistrement audio ou vidéo. Un capteur qui mesure un niveau de bruit, une présence ou la qualité d'air sans micro ni caméra reste dans le cadre.</strong>
+<p>Le RGPD n'interdit pas le monitoring : il encadre la collecte de données personnelles. Tout l'enjeu est de ne pas en collecter inutilement.</p>
+<h2>Les trois principes à respecter</h2>
+<p>- <strong>Transparence et information.</strong> Le voyageur doit être informé de la présence des capteurs, de leur finalité (prévenir les nuisances et les sinistres) et de la nature des données. À indiquer dans l'annonce et le règlement intérieur.
+- <strong>Minimisation des données.</strong> On ne collecte que l'utile : niveau sonore en dB, présence binaire ou comptage, mesures environnementales. Pas de contenu audio, pas d'image.
+- <strong>Finalité légitime.</strong> La prévention des troubles et la protection du bien sont des finalités recevables ; la surveillance des personnes ne l'est pas.</p>
+<h2>Ce qui est interdit</h2>
+<p>- <strong>Toute caméra</strong> à l'intérieur du logement.
+- <strong>Tout micro d'enregistrement</strong> captant le contenu sonore.
+- La collecte de données qui permettraient d'<strong>identifier</strong> ou de suivre individuellement un occupant.</p>
+<h2>Ce qui est conforme</h2>
+<p>- Un <strong>niveau sonore en dB</strong>, sans audio : ce n'est pas une donnée identifiante.
+- Une <strong>présence ou un comptage</strong> par PIR, ToF ou radar : un nombre, pas une identité.
+- Des <strong>mesures environnementales</strong> (CO₂, température, humidité).</p>
+<h2>Bonnes pratiques complémentaires</h2>
+<p>- Choisir un prestataire dont les <strong>données sont hébergées dans l'UE</strong>, avec chiffrement en transit et au repos.
+- Vérifier qu'un <strong>DPO</strong> (délégué à la protection des données) est désigné.
+- Définir une <strong>durée de conservation</strong> proportionnée des historiques.</p>
+<p>> Cet article est informatif et ne constitue pas un avis juridique. En cas de doute, consultez la CNIL ou un professionnel.</p>
+<h2>Avec NOISYLESS</h2>
+<p>Les capteurs <a href="/produits/noisyless-simple.html">NOISYLESS</a> ne captent ni image ni son (uniquement dB, présence et qualité d'air), avec données hébergées en Europe (OVH France, base en Allemagne), chiffrement MQTT over TLS 1.3 et DPO désigné — une conformité pensée dès la conception.</p>
+<h2>FAQ</h2>
+<strong>Un niveau sonore en dB est-il une donnée personnelle ?</strong>
+Non, s'il n'est pas associé à un enregistrement audio ou à un élément identifiant : c'est une mesure d'intensité, pas une donnée permettant de reconnaître quelqu'un.
+<strong>Dois-je faire une déclaration à la CNIL ?</strong>
+La logique RGPD repose surtout sur la responsabilisation (registre, information, minimisation) plutôt que sur une déclaration systématique. Référez-vous aux recommandations de la CNIL.
+<strong>Où doivent être stockées les données ?</strong>
+De préférence dans l'Union européenne, sans transfert hors UE, avec chiffrement.
+<p>---</p>
+<em>Voir aussi : <a href="/blog/detecteur-bruit-airbnb-legal.html">Un détecteur de bruit est-il légal ?</a> · <a href="/blog/suroccupation-location-courte-duree.html">Suroccupation : la repérer légalement</a></em>
+<!-- JSON-LD -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "Un niveau sonore en dB est-il une donnée personnelle ?", "acceptedAnswer": { "@type": "Answer", "text": "Non, s'il n'est pas associé à un enregistrement audio ou à un élément identifiant : c'est une mesure d'intensité, pas une donnée identifiante." } },
+    { "@type": "Question", "name": "Où doivent être stockées les données ?", "acceptedAnswer": { "@type": "Answer", "text": "De préférence dans l'Union européenne, sans transfert hors UE, avec chiffrement." } }
+  ]
+}
+</script>
+        </div>
+    </article>
+
+    <footer>
+        <div class="container">
+            <p>© 2026 NOISYLESS — ELEC-CORE / MBHREP</p>
+            <p style="margin-top: 8px;">
+                <a href="/mentions-legales.html">Mentions légales</a>
+                <a href="/confidentialite.html">Confidentialité</a>
+                <a href="/cgv.html">CGV</a>
+            </p>
+        </div>
+    </footer>
+</body>
+</html>

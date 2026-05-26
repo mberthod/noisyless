@@ -1,3 +1,4 @@
+# Fichiers CAO temporaires
 03_CAO/**-backups/**
 03_CAO/**/_autosave-*
 03_CAO/**/~*.lck
@@ -5,3 +6,9 @@
 *.pptx
 *.pptm
 *.pdf
+
+# Certificats LetsEncrypt (root-owned)
+**/ssl/accounts/
+
+# KiCad temp history (résidu fréquent)
+**/hardware/kicad/.history/

@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOISYLESS Simple | Capteur environnemental professionnel</title>
+    <meta name="description" content="Capteur IoT tout-en-un : bruit, occupation, qualité d'air. Installation 2 minutes. 79€ HT.">
+    <link rel="canonical" href="https://noisyless.com/produits/noisyless-simple">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #FFFFFF; --bg-alt: #F5F5F3; --ink: #1A1A1A; --ink-light: #5A5A5A;
+            --border: #E0E0E0; --signal: #FF6B00; --signal-dim: #FF6B0020; --success: #00A859;
+            --font-display: 'Space Mono', monospace; --font-body: 'IBM Plex Sans', sans-serif;
+        }
+        body { font-family: var(--font-body); background: var(--bg); color: var(--ink); line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+        header { border-bottom: 1px solid var(--border); padding: 20px 0; }
+        .header-inner { display: flex; justify-content: space-between; align-items: center; }
+        .logo img { height: 32px; width: auto; }
+        nav a { color: var(--ink); text-decoration: none; font-family: var(--font-display); font-size: 0.875rem; margin-left: 24px; }
+        nav a:hover { color: var(--signal); }
+        .product-hero { padding: 60px 0; border-bottom: 1px solid var(--border); }
+        .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: start; }
+        @media (max-width: 900px) { .product-grid { grid-template-columns: 1fr; } }
+        .product-image { background: var(--bg-alt); border: 1px solid var(--border); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); color: var(--ink-light); }
+        .product-info h1 { font-family: var(--font-display); font-size: 2.5rem; margin-bottom: 16px; }
+        .product-info .price { font-family: var(--font-display); font-size: 2rem; font-weight: 700; margin-bottom: 24px; }
+        .product-info .price span { font-size: 1rem; font-weight: 400; color: var(--ink-light); }
+        .product-info .availability { color: var(--success); font-family: var(--font-display); font-size: 0.875rem; margin-bottom: 32px; }
+        .btn { display: inline-block; padding: 14px 28px; font-family: var(--font-display); font-weight: 700; text-decoration: none; border: 1px solid var(--ink); cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: var(--ink); color: var(--bg); }
+        .btn-primary:hover { background: var(--signal); border-color: var(--signal); }
+        .btn-secondary { background: transparent; color: var(--ink); }
+        .btn-secondary:hover { background: var(--bg-alt); }
+        .specs { padding: 60px 0; border-bottom: 1px solid var(--border); }
+        .specs h2 { font-family: var(--font-display); margin-bottom: 40px; }
+        .specs-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 40px; }
+        @media (max-width: 768px) { .specs-grid { grid-template-columns: 1fr; } }
+        .spec-category h3 { font-family: var(--font-display); font-size: 1rem; margin-bottom: 20px; color: var(--ink-light); }
+        .spec-list { list-style: none; }
+        .spec-list li { padding: 12px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; font-size: 0.9375rem; }
+        .spec-list li:last-child { border-bottom: none; }
+        .spec-label { color: var(--ink-light); }
+        .spec-value { font-family: var(--font-display); font-weight: 700; }
+        .order-section { padding: 60px 0; background: var(--bg-alt); }
+        .order-form { max-width: 600px; margin: 0 auto; background: var(--bg); padding: 40px; border: 1px solid var(--border); }
+        .order-form h2 { font-family: var(--font-display); margin-bottom: 32px; }
+        .form-group { margin-bottom: 24px; }
+        .form-group label { display: block; font-family: var(--font-display); font-size: 0.875rem; margin-bottom: 8px; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid var(--border); font-family: var(--font-body); font-size: 1rem; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--signal); }
+        .order-summary { background: var(--bg-alt); padding: 20px; margin-bottom: 24px; }
+        .order-summary-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.9375rem; }
+        .order-summary-row.total { border-top: 1px solid var(--border); padding-top: 12px; font-weight: 700; font-family: var(--font-display); }
+        
+        /* Subscription tiers */
+        .subscription-tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+        @media (max-width: 768px) { .subscription-tiers { grid-template-columns: 1fr; } }
+        .tier-card { border: 2px solid var(--border); padding: 20px; cursor: pointer; transition: all 0.2s; position: relative; }
+        .tier-card:hover { border-color: var(--signal); }
+        .tier-card.selected { border-color: var(--signal); background: var(--signal-dim); }
+        .tier-card input { display: none; }
+        .tier-name { font-family: var(--font-display); font-weight: 700; font-size: 1rem; margin-bottom: 8px; }
+        .tier-price { font-family: var(--font-display); font-size: 1.25rem; color: var(--signal); margin-bottom: 8px; }
+        .tier-capteurs { font-size: 0.875rem; color: var(--ink-light); margin-bottom: 12px; }
+        .tier-overage { font-size: 0.75rem; color: var(--ink-light); font-style: italic; }
+        .tier-recommended { position: absolute; top: -10px; right: 12px; background: var(--signal); color: #fff; padding: 2px 8px; font-size: 0.625rem; font-family: var(--font-display); font-weight: 700; }
+        
+        .overage-info { background: var(--bg-alt); padding: 16px; border: 1px solid var(--border); margin-bottom: 24px; font-size: 0.875rem; }
+        .overage-info strong { font-family: var(--font-display); }
+        
+        .auto-switch-notice { background: var(--signal-dim); border: 1px solid var(--signal); padding: 12px 16px; margin-bottom: 24px; font-size: 0.875rem; display: none; }
+        .auto-switch-notice.show { display: block; }
+        .auto-switch-notice strong { color: var(--signal); }
+        
+        .existing-customer-notice { background: #e3f2fd; border: 1px solid #90caf9; padding: 12px 16px; margin-bottom: 24px; font-size: 0.875rem; display: none; }
+        .existing-customer-notice.show { display: block; }
+        
+        footer { padding: 40px 0; border-top: 1px solid var(--border); text-align: center; font-size: 0.875rem; color: var(--ink-light); }
+        footer a { color: var(--ink-light); margin: 0 8px; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-inner">
+            <a href="/" class="logo">
+                <img src="/assets/logohorizmonochrome.png" alt="NOISYLESS">
+            </a>
+            <nav>
+                <a href="/">Accueil</a>
+                <a href="/produits/noisyless-simple.html">Produits</a>
+                <a href="/faq.html">FAQ</a>
+                <a href="/blog/">Blog</a>
+                <a href="https://platform.noisyless.com">Dashboard</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="product-hero">
+        <div class="container product-grid">
+            <div class="product-image">[Photo produit — boîtier blanc 90×90×25mm]</div>
+            <div class="product-info">
+                <h1>NOISYLESS Simple</h1>
+                <p style="color: var(--ink-light); margin-bottom: 24px;">Capteur environnemental professionnel pour locations courte durée.</p>
+                <div class="price">79,00 € <span>HT</span></div>
+                <div class="availability">✓ En stock — expédition 24-48h</div>
+                <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                    <a href="#commander" class="btn btn-primary">Commander</a>
+                    <a href="#specs" class="btn btn-secondary">Voir spécifications</a>
+                </div>
+                <div style="margin-top: 40px; padding: 20px; background: var(--bg-alt); border: 1px solid var(--border);">
+                    <strong style="font-family: var(--font-display); font-size: 0.875rem;">Inclus dans la boîte :</strong>
+                    <ul style="margin-top: 12px; padding-left: 20px; font-size: 0.9375rem; color: var(--ink-light);">
+                        <li>Capteur NOISYLESS Simple</li>
+                        <li>Câble USB-C 2m</li>
+                        <li>Adhésif 3M VHB</li>
+                        <li>Guide de démarrage rapide</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="specs" id="specs">
+        <div class="container">
+            <h2>Spécifications techniques</h2>
+            <div class="specs-grid">
+                <div class="spec-category">
+                    <h3>CAPTEURS</h3>
+                    <ul class="spec-list">
+                        <li><span class="spec-label">Microphone</span> <span class="spec-value">MEMS, pondération A</span></li>
+                        <li><span class="spec-label">Plage sonore</span> <span class="spec-value">30-120 dB(A)</span></li>
+                        <li><span class="spec-label">Précision</span> <span class="spec-value">±2 dB</span></li>
+                        <li><span class="spec-label">Capteur PIR</span> <span class="spec-value">Détection présence</span></li>
+                        <li><span class="spec-label">CO₂</span> <span class="spec-value">NDIR, 400-5000 ppm</span></li>
+                        <li><span class="spec-label">TVOC</span> <span class="spec-value">0-60000 ppb</span></li>
+                        <li><span class="spec-label">Température</span> <span class="spec-value">-20 à 60°C</span></li>
+                        <li><span class="spec-label">Humidité</span> <span class="spec-value">0-100% RH</span></li>
+                    </ul>
+                </div>
+                <div class="spec-category">
+                    <h3>CONNECTIVITÉ</h3>
+                    <ul class="spec-list">
+                        <li><span class="spec-label">WiFi</span> <span class="spec-value">2.4 GHz 802.11 b/g/n</span></li>
+                        <li><span class="spec-label">Ethernet</span> <span class="spec-value">Optionnel (adaptateur)</span></li>
+                        <li><span class="spec-label">Protocole</span> <span class="spec-value">MQTT TLS</span></li>
+                        <li><span class="spec-label">Fréquence</span> <span class="spec-value">30-300s configurable</span></li>
+                    </ul>
+                </div>
+                <div class="spec-category">
+                    <h3>ALIMENTATION</h3>
+                    <ul class="spec-list">
+                        <li><span class="spec-label">Entrée</span> <span class="spec-value">USB-C 5V/2A</span></li>
+                        <li><span class="spec-label">Consommation</span> <span class="spec-value">~500mW</span></li>
+                        <li><span class="spec-label">Batterie backup</span> <span class="spec-value">Non (optionnel)</span></li>
+                    </ul>
+                </div>
+                <div class="spec-category">
+                    <h3>PHYSIQUE</h3>
+                    <ul class="spec-list">
+                        <li><span class="spec-label">Dimensions</span> <span class="spec-value">90 × 90 × 25 mm</span></li>
+                        <li><span class="spec-label">Poids</span> <span class="spec-value">180g</span></li>
+                        <li><span class="spec-label">Matériau</span> <span class="spec-value">ABS blanc</span></li>
+                        <li><span class="spec-label">Fixation</span> <span class="spec-value">Adhésif 3M ou vis</span></li>
+                        <li><span class="spec-label">IP</span> <span class="spec-value">IP20 (intérieur)</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="order-section" id="commander">
+        <div class="container">
+            <form class="order-form" id="orderForm">
+                <h2>Commander</h2>
+                
+                <div class="form-group">
+                    <label for="product">Produit</label>
+                    <select id="product" disabled>
+                        <option value="nl-simple">NOISYLESS Simple</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="quantity">Quantité</label>
+                    <input type="number" id="quantity" min="1" max="50" value="1">
+                    <p style="font-size: 0.75rem; color: var(--ink-light); margin-top: 8px; font-style: italic;">
+                        L'abonnement recommandé est automatiquement sélectionné selon la quantité.
+                    </p>
+                </div>
+                
+                <div class="form-group">
+                    <label>Abonnement requis — Dashboard inclus</label>
+                    <p style="font-size: 0.875rem; color: var(--ink-light); margin-bottom: 16px;">
+                        Chaque capteur nécessite un abonnement pour accéder au dashboard. 
+                        <a href="/faq.html" style="color: var(--signal);">Pourquoi ? →</a>
+                    </p>
+                    
+                    <div class="subscription-tiers">
+                        <label class="tier-card" id="tier-starter">
+                            <input type="radio" name="subscription" value="starter" onchange="updateTotal()">
+                            <div class="tier-name">Starter</div>
+                            <div class="tier-price">4,99 €<span style="font-size: 0.875rem; color: var(--ink-light);">/mois</span></div>
+                            <div class="tier-capteurs">1-5 capteurs</div>
+                        </label>
+                        
+                        <label class="tier-card business" id="tier-business">
+                            <input type="radio" name="subscription" value="business" onchange="updateTotal()">
+                            <div class="tier-name">Business</div>
+                            <div class="tier-price">14,90 €<span style="font-size: 0.875rem; color: var(--ink-light);">/mois</span></div>
+                            <div class="tier-capteurs">6-20 capteurs</div>
+                            <div class="tier-recommended">RECOMMANDÉ</div>
+                            <div class="tier-overage">Idéal conciergeries</div>
+                        </label>
+                        
+                        <label class="tier-card pro" id="tier-pro">
+                            <input type="radio" name="subscription" value="pro" onchange="updateTotal()">
+                            <div class="tier-name">Pro</div>
+                            <div class="tier-price">39,90 €<span style="font-size: 0.875rem; color: var(--ink-light);">/mois</span></div>
+                            <div class="tier-capteurs">21-100 capteurs</div>
+                            <div class="tier-overage">Gestionnaires de parc</div>
+                        </label>
+                    </div>
+                    
+                    <div id="autoSwitchNotice" class="auto-switch-notice">
+                        <strong>⚡ Bascule automatique :</strong> <span id="autoSwitchText"></span>
+                    </div>
+                    
+                    <div id="existingCustomerNotice" class="existing-customer-notice">
+                        <strong>👋 Client existant :</strong> <span id="existingCustomerText"></span>
+                    </div>
+                    
+                    <div class="overage-info">
+                        <strong>Overage (au-delà de 100 capteurs) :</strong> 0,50 €/capteur/mois. 
+                        Contactez-nous pour un devis Enterprise personnalisé.
+                    </div>
+                </div>
+                
+                <div class="order-summary">
+                    <div class="order-summary-row">
+                        <span>Capteurs</span>
+                        <span id="hardware-total">79,00 €</span>
+                    </div>
+                    <div class="order-summary-row">
+                        <span>Abonnement (premier mois)</span>
+                        <span id="subscription-price">4,99 €</span>
+                    </div>
+                    <div class="order-summary-row total">
+                        <span>Total aujourd'hui</span>
+                        <span id="total">83,99 €</span>
+                    </div>
+                    <div style="margin-top: 12px; font-size: 0.75rem; color: var(--ink-light); font-style: italic;">
+                        * Abonnement reconductible mensuellement, résiliable à tout moment.
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email professionnel *</label>
+                    <input type="email" id="email" required placeholder="vous@entreprise.com">
+                    <p style="font-size: 0.75rem; color: var(--ink-light); margin-top: 4px;">
+                        Si vous avez déjà un compte, utilisez la même email pour être reconnu.
+                    </p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="name">Nom *</label>
+                    <input type="text" id="name" required placeholder="Votre nom">
+                </div>
+                
+                <div class="form-group">
+                    <label for="company">Société (optionnel)</label>
+                    <input type="text" id="company" placeholder="Nom de votre société">
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Payer avec Stripe</button>
+                
+                <p id="orderStatus" style="margin-top: 16px; font-size: 0.875rem; display: none;"></p>
+            </form>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>© 2026 NOISYLESS — ELEC-CORE / MBHREP</p>
+            <p style="margin-top: 8px;">
+                <a href="/mentions-legales.html">Mentions légales</a>
+                <a href="/confidentialite.html">Confidentialité</a>
+                <a href="/cgv.html">CGV</a>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        const prices = { 'nl-simple': 79 };
+        const subPrices = { 'starter': 4.99, 'business': 14.90, 'pro': 39.90 };
+        const subLimits = { 'starter': 5, 'business': 20, 'pro': 100 };
+        const overageRate = 0.50;
+        
+        let existingCustomerData = null;
+        let debounceTimer = null;
+        
+        // Auto-select subscription based on quantity
+        function autoSelectSubscription(qty) {
+            const prev = document.querySelector('input[name="subscription"]:checked')?.value;
+            let recommended;
+            
+            if (qty <= 5) recommended = 'starter';
+            else if (qty <= 20) recommended = 'business';
+            else recommended = 'pro';
+            
+            // Show notice if auto-switching
+            const notice = document.getElementById('autoSwitchNotice');
+            const noticeText = document.getElementById('autoSwitchText');
+            
+            if (prev && prev !== recommended) {
+                noticeText.textContent = `Passage de ${prev} à ${recommended} (${qty} capteurs)`;
+                notice.classList.add('show');
+                setTimeout(() => notice.classList.remove('show'), 3000);
+            }
+            
+            // Set the radio
+            const radio = document.querySelector(`input[name="subscription"][value="${recommended}"]`);
+            if (radio) {
+                radio.checked = true;
+                updateVisualSelection();
+            }
+        }
+        
+        // Check if customer exists in Stripe
+        async function checkExistingCustomer(email) {
+            if (!email || !email.includes('@')) return;
+            
+            try {
+                const response = await fetch(`https://platform.noisyless.com/api/customer/check?email=${encodeURIComponent(email)}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.exists && data.subscription) {
+                        existingCustomerData = data;
+                        showExistingCustomerNotice(data);
+                    }
+                }
+            } catch (error) {
+                console.log('Could not check customer:', error);
+            }
+        }
+        
+        function showExistingCustomerNotice(data) {
+            const notice = document.getElementById('existingCustomerNotice');
+            const noticeText = document.getElementById('existingCustomerText');
+            
+            const currentPlan = data.subscription.plan;
+            const newQty = parseInt(document.getElementById('quantity').value) || 1;
+            const currentLimit = subLimits[currentPlan];
+            
+            if (newQty <= currentLimit) {
+                noticeText.textContent = `Vous avez déjà un abonnement ${currentPlan} (${currentLimit} capteurs). Aucun supplément pour ${newQty} capteur(s).`;
+            } else {
+                const upgradeTo = newQty <= 20 ? 'Business' : newQty <= 100 ? 'Pro' : 'Enterprise';
+                noticeText.textContent = `Votre abonnement ${currentPlan} est insuffisant. Upgrade vers ${upgradeTo} requis.`;
+            }
+            
+            notice.classList.add('show');
+        }
+        
+        // Initialize tier cards click handlers
+        document.querySelectorAll('.tier-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                if (e.target.type === 'radio') return;
+                const radio = this.querySelector('input[type="radio"]');
+                radio.checked = true;
+                updateTotal();
+                updateVisualSelection();
+            });
+        });
+        
+        function updateVisualSelection() {
+            document.querySelectorAll('.tier-card').forEach(el => {
+                el.classList.remove('selected');
+            });
+            const selected = document.querySelector('input[name="subscription"]:checked');
+            if (selected) {
+                selected.closest('.tier-card').classList.add('selected');
+            }
+        }
+        
+        function updateTotal() {
+            const product = document.getElementById('product').value;
+            const qty = parseInt(document.getElementById('quantity').value) || 1;
+            const sub = document.querySelector('input[name="subscription"]:checked')?.value || 'starter';
+            
+            const hardwareTotal = prices[product] * qty;
+            let subPrice = subPrices[sub];
+            let overageCharge = 0;
+            
+            // Calculate overage if quantity exceeds plan limit
+            const limit = subLimits[sub];
+            if (qty > limit) {
+                overageCharge = (qty - limit) * overageRate;
+            }
+            
+            const totalSubscription = subPrice + overageCharge;
+            const totalToday = hardwareTotal + totalSubscription;
+            
+            document.getElementById('hardware-total').textContent = hardwareTotal.toFixed(2) + ' €';
+            
+            if (overageCharge > 0) {
+                document.getElementById('subscription-price').textContent = 
+                    subPrice.toFixed(2) + ' € + ' + overageCharge.toFixed(2) + ' € (overage)';
+            } else {
+                document.getElementById('subscription-price').textContent = totalSubscription.toFixed(2) + ' €';
+            }
+            
+            document.getElementById('total').textContent = totalToday.toFixed(2) + ' €';
+            
+            updateVisualSelection();
+        }
+        
+        // Quantity change listener with auto-switch
+        document.getElementById('quantity').addEventListener('input', function(e) {
+            const qty = parseInt(e.target.value) || 1;
+            autoSelectSubscription(qty);
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                updateTotal();
+            }, 300);
+        });
+        
+        // Email change listener for existing customer check
+        document.getElementById('email').addEventListener('blur', function(e) {
+            checkExistingCustomer(e.target.value);
+        });
+        
+        // Initialize on page load
+        updateVisualSelection();
+        updateTotal();
+        
+        document.getElementById('orderForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const status = document.getElementById('orderStatus');
+            status.style.display = 'block';
+            status.textContent = 'Initialisation du paiement...';
+            
+            const product = document.getElementById('product').value;
+            const qty = parseInt(document.getElementById('quantity').value) || 1;
+            const sub = document.querySelector('input[name="subscription"]:checked').value;
+            const email = document.getElementById('email').value;
+            const name = document.getElementById('name').value;
+            const company = document.getElementById('company').value;
+            
+            console.log('Sending checkout request:', {
+                items: [{ product_id: product, quantity: qty, subscription_plan: sub }],
+                email: email,
+                name: name,
+                company: company || null,
+                existing_customer: existingCustomerData?.exists || false
+            });
+            
+            try {
+                const response = await fetch('https://platform.noisyless.com/shop/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        items: [{ product_id: product, quantity: qty, subscription_plan: sub }],
+                        email: email,
+                        name: name,
+                        company: company || null,
+                        existing_customer_id: existingCustomerData?.customer_id || null
+                    })
+                });
+                
+                console.log('Response status:', response.status);
+                const responseData = await response.json();
+                console.log('Response data:', responseData);
+                
+                if (response.ok) {
+                    if (responseData.url) {
+                        window.location.href = responseData.url;
+                    } else if (responseData.session_id) {
+                        const stripe = Stripe('pk_live_51TTSCbEvgqhDyN6IaNiWvkC6rlxg2JkKZb6iwXmXKzLTdQsAVFVFBTKJYOCgEBMa2NYN4unCQTUA2fzoy8zTZcyF00mbGKDUEb');
+                        await stripe.redirectToCheckout({ sessionId: responseData.session_id });
+                    } else {
+                        throw new Error('No URL or session_id returned');
+                    }
+                } else {
+                    throw new Error(responseData.detail || 'Checkout failed');
+                }
+            } catch (error) {
+                console.error('Checkout error:', error);
+                status.textContent = '❌ Erreur: ' + error.message;
+                status.style.color = '#ef4444';
+            }
+        });
+    </script>
+</body>
+</html>

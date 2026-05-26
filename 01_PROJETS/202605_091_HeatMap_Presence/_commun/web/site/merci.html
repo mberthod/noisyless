@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Merci pour votre commande | NOISYLESS</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 600px;
+            padding: 40px;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #28a745; /* Green for success */
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 1.1em;
+            line-height: 1.6;
+            color: #333;
+        }
+        .info-box {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            text-align: left;
+        }
+        .info-box strong {
+            display: block;
+            margin-top: 10px;
+            color: #555;
+        }
+        .btn {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✅ Commande confirmée</h1>
+        <div id="confirmation-message">
+            <!-- Dynamic content inserted here -->
+        </div>
+        <a href="/" class="btn">Retour au site</a>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const name = params.get('name') || 'Client';
+        const email = params.get('email') || 'N/A';
+        const sessionId = params.get('session_id') || 'N/A';
+
+        document.getElementById('confirmation-message').innerHTML = `
+            <p>Merci <strong>${name}</strong> ! 🎉</p>
+            <div class="info-box">
+                <p>Un email de confirmation a été envoyé à : <strong>${email}</strong></p>
+                <p>Référence de commande : <strong>${sessionId}</strong></p>
+            </div>
+        `;
+    </script>
+</body>
+</html>

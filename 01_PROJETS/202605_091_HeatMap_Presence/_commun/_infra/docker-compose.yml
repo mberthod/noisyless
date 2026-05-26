@@ -1,0 +1,148 @@
+version: '3.8'
+
+services:
+  # ── MQTT Broker ──
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: noisyless-mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "8883:8883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config:ro
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+      - ./mosquitto/certs:/mosquitto/certs:ro
+    networks:
+      - noisyless-net
+
+  # ── TimescaleDB ──
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: noisyless-timescaledb
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: noisyless
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-noisyless_secret_password}
+      POSTGRES_DB: noisyless
+    volumes:
+      - ./timescaledb/data:/var/lib/postgresql/data
+      - ./timescaledb/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - noisyless-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U noisyless -d noisyless"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── MQTT Ingest Service ──
+  mqtt-ingest:
+    build:
+      context: ./services/mqtt-ingest
+      dockerfile: Dockerfile
+    container_name: noisyless-mqtt-ingest
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+      - timescaledb
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_USER: noisyless
+      DB_PASSWORD: ${DB_PASSWORD:-noisyless_secret_password}
+      DB_NAME: noisyless
+    networks:
+      - noisyless-net
+
+  # ── Heatmap Aggregator ──
+  heatmap-agg:
+    build:
+      context: ./services/heatmap-agg
+      dockerfile: Dockerfile
+    container_name: noisyless-heatmap-agg
+    restart: unless-stopped
+    depends_on:
+      - timescaledb
+    environment:
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_USER: noisyless
+      DB_PASSWORD: ${DB_PASSWORD:-noisyless_secret_password}
+      DB_NAME: noisyless
+      AGG_WINDOW_SECONDS: 300
+    networks:
+      - noisyless-net
+
+  # ── Alert Engine ──
+  alert-engine:
+    build:
+      context: ./services/alert-engine
+      dockerfile: Dockerfile
+    container_name: noisyless-alert-engine
+    restart: unless-stopped
+    depends_on:
+      - timescaledb
+      - mqtt-ingest
+    environment:
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_USER: noisyless
+      DB_PASSWORD: ${DB_PASSWORD:-noisyless_secret_password}
+      DB_NAME: noisyless
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    networks:
+      - noisyless-net
+
+  # ── FastAPI Backend ──
+  api:
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    container_name: noisyless-api
+    restart: unless-stopped
+    depends_on:
+      - timescaledb
+    environment:
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_USER: noisyless
+      DB_PASSWORD: ${DB_PASSWORD:-noisyless_secret_password}
+      DB_NAME: noisyless
+      JWT_SECRET: ${JWT_SECRET:-noisyless_jwt_super_secret_key_2026}
+      JWT_EXPIRY_MINUTES: 30
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-whsec_replace_me}
+      SMTP_HOST=${SMTP_HOST:-ssl0.ovh.net}
+      SMTP_PORT=${SMTP_PORT:-465}
+      SMTP_USER=${SMTP_USER:-contact@noisyless.com}
+      SMTP_PASSWORD=${SMTP_PASSWORD:-replace_me}
+    networks:
+      - noisyless-net
+
+  # ── Nginx Reverse Proxy ──
+  nginx:
+    image: nginx:alpine
+    container_name: noisyless-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./static:/var/www/static:ro
+    depends_on:
+      - api
+    networks:
+      - noisyless-net
+
+networks:
+  noisyless-net:
+    driver: bridge

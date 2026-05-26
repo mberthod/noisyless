@@ -1,0 +1,104 @@
+(kicad_sch
+	(version 20250114)
+	(generator "eeschema")
+	(generator_version "9.0")
+	(uuid "7a9e5f91-45ef-41cd-822f-a39b1ec57cf3")
+	(paper "A3")
+	(title_block
+		(title "Environemental Sensor")
+		(date "2024-06-14")
+		(rev "v0.1")
+		(company "MBHHOLD")
+	)
+	(lib_symbols)
+	(sheet
+		(at 175.26 74.93)
+		(size 48.26 45.72)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "4e197258-f286-488e-b2a4-387f74a2aff5")
+		(property "Sheetname" "02_SENSORS"
+			(at 175.26 74.2184 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "02_SENSORS.kicad_sch"
+			(at 175.26 121.2346 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "Environnemental_sensor_V01"
+				(path "/7a9e5f91-45ef-41cd-822f-a39b1ec57cf3"
+					(page "3")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 87.63 74.93)
+		(size 54.61 45.72)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "7c8c5f8d-6574-4bb7-b3cd-88ca842248d3")
+		(property "Sheetname" "01_microcontroller"
+			(at 87.63 74.2184 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "01_microcontroller.kicad_sch"
+			(at 87.63 121.2346 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "Environnemental_sensor_V01"
+				(path "/7a9e5f91-45ef-41cd-822f-a39b1ec57cf3"
+					(page "2")
+				)
+			)
+		)
+	)
+	(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+	(embedded_fonts no)
+)

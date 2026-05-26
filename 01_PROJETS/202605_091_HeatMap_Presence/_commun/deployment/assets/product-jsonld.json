@@ -1,0 +1,27 @@
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://noisyless.com/#org",
+      "name": "NOISYLESS",
+      "url": "https://noisyless.com",
+      "email": "contact@noisyless.com",
+      "sameAs": ["{{LinkedIn}}", "{{Instagram}}", "{{Facebook}}"]
+    },
+    {
+      "@type": "Product",
+      "name": "NOISYLESS Simple",
+      "category": "Détecteur de bruit pour location courte durée",
+      "description": "Capteur IoT bruit (dB SPL IEC 61672-1 classe 2), présence et qualité d'air (CO₂, température, humidité) pour Airbnb. Sans caméra ni micro, 100% RGPD, données hébergées en Europe.",
+      "brand": { "@id": "https://noisyless.com/#org" },
+      "offers": {
+        "@type": "Offer",
+        "price": "79.00",
+        "priceCurrency": "EUR",
+        "availability": "https://schema.org/InStock",
+        "url": "https://noisyless.com/produits/noisyless-simple"
+      }
+    }
+  ]
+}
