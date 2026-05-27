@@ -1,7 +1,7 @@
 {
-  "version": "0.0.1",
+  "version": "0.0.2",
   "min_version": "0.0.0",
-  "url": "https://noisyless.com/firmware/noisyless-v0.0.1.bin",
-  "changelog": "First production firmware: WiFiManager, I2C scan (0x76+0x77), LED status, OTA every 10min, device_id MAC",
-  "hash": "sha256:eca3b180ec39b86c520e625fc4bf279e9c7a49a9d718f5ac09dbc2506e5596db"
+  "url": "https://noisyless.com/firmware/noisyless-v0.0.2.bin",
+  "changelog": "Test OTA : LED bleue 3s au boot pour confirmer la mise à jour",
+  "hash": "sha256:b366af87ffa4e2e2d1c0cd0ecf5a9dd2fe652ab80834df68bc4d1056afb60d5a"
 }
