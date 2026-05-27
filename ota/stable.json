@@ -1,7 +1,7 @@
 {
-  "version": "1.1.0",
-  "min_version": "1.0.0",
-  "url": "https://noisyless.com/firmware/noisyless-v1.1.0-wifimanager.bin",
-  "changelog": "WiFiManager captive portal, device_id MAC unique, LED RGB status, partitions 2.5MB OTA",
-  "hash": "sha256:703182fd39b96e30f0be58201643399203b54b8f8a364c20cf46c8086c262572"
+  "version": "0.0.1",
+  "min_version": "0.0.0",
+  "url": "https://noisyless.com/firmware/noisyless-v0.0.1.bin",
+  "changelog": "First production firmware: WiFiManager, I2C scan (0x76+0x77), LED status, OTA every 10min, device_id MAC",
+  "hash": "sha256:eca3b180ec39b86c520e625fc4bf279e9c7a49a9d718f5ac09dbc2506e5596db"
 }
