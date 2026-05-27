@@ -1,969 +1,183 @@
-// Firmware Noisyless - ESP32-S3
-// Capteurs: BME680 (I2C), LD2410 (UART)
-// Réseau: WiFi + MQTT (PubSubClient)
-
+// NOISYLESS Standard v1.0.6 — S3, WiFi+MQTT+Analog, LED fix, version blink, OTA-ready
 #include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
-#include <Wire.h>
-#include <bsec2.h>    // Préférer l'API Bsec (compatible BSEC2 Arduino)
-#include <HardwareSerial.h>
-#include <ld2410.h>  // Bibliothèque LD2410 (ncmreynolds/ld2410@^0.1.4)
 #include <HTTPClient.h>
 #include <Update.h>
 #include <mbedtls/sha256.h>
+#include "wifi_config.h"
+#include "credentials.h"
 
-#include "credentials.h"  // Contient uniquement les secrets MQTT
-// -------------------- Brochage --------------------
+#if ARDUINO_USB_CDC_ON_BOOT
+#define HWSerial Serial0
+#define USBSerial Serial
+#else
+#define HWSerial Serial
+#define USBSerial Serial
+#endif
+
+static const int PIN_LED_R = 12;
+static const int PIN_LED_G = 13;
+static const int PIN_LED_B = 14;
 static const int PIN_LUX1_AIN = 1;
 static const int PIN_LUX2_AIN = 2;
 static const int PIN_MIC1 = 3;
 static const int PIN_MIC2 = 4;
-static const int PIN_SYSTEM_POWERED = 5;
-static const int PIN_SW_OPEN = 11;
-static const int PIN_LED_B = 14;  // actif bas (0 = allumé)
-static const int PIN_LED_G = 13;  // actif bas
-static const int PIN_LED_R = 12;  // actif bas
-static const int PIN_LD2410_RX_ESP = 18;  // LD2410 TX → ESP RX
-static const int PIN_LD2410_TX_ESP = 17;  // LD2410 RX → ESP TX
-static const int PIN_OUT_SIGNAL = 21;
-static const int PIN_BME_INT = 34;
-static const int PIN_I2C_SDA = 35;
-static const int PIN_I2C_SCL = 36;
-static const int PIN_BME_MODE = 37;
 
-// -------------------- Configuration Produit --------------------
-static const char* WIFI_SSID = "TP-Link_B150";
-static const char* WIFI_PASS = "12902637";
-
-static const char* PRODUCT = "noisyless_env";
-static const char* CLIENT_CODE = "client_demo";
-static const char* DEVICE_ID = "NL-001";
-static const char* CLIENT_ID = "noisyless_NL-001";
-static const char* FW_VERSION = "1.0.0";
-
-static const unsigned long PUBLISH_INTERVAL_MS = 10000UL;  // 10s
-static const unsigned long SENSOR_ADC_WINDOW_MS = 50UL;
-static const unsigned long RADAR_READ_PERIOD_MS = 100UL;
-static const unsigned long OTA_CHECK_INTERVAL_MS = 3600000UL; // 1h
-// Manifest OTA (canal: stable)
-static const char* OTA_MANIFEST_URL = "https://raw.githubusercontent.com/mberthod/noisyless/main/ota/stable.json";
-static const char* OTA_USER_AGENT = "Noisyless-ESP32";
-
-// -------------------- Objets globaux --------------------
 WiFiClient espClient;
 PubSubClient mqtt(espClient);
 
-ld2410 radar;                   // Capteur LD2410
-HardwareSerial& RadarSerial = Serial1;
+char DEVICE_ID[20];
+char MQTT_TOPIC[128];
+unsigned long lastPub = 0;
+unsigned long greenOnAt = 0;
+unsigned long pubFlashOnAt = 0;
+unsigned long lastOtaCheck = 0;
 
+const char* FW_VERSION = "1.0.8";
+const unsigned long PUB_INTERVAL = 10000;
+const unsigned long OTA_INTERVAL = 60000;
+const unsigned long LED_BLINK_MS = 150;
 
-#define ERROR_DUR 1000
+// LED logic — INVERTED: LOW = ON, HIGH = OFF
+void ledOff()  { digitalWrite(PIN_LED_R,HIGH); digitalWrite(PIN_LED_G,HIGH); digitalWrite(PIN_LED_B,HIGH); }
+void ledRed()  { ledOff(); digitalWrite(PIN_LED_R,LOW); }
+void ledBlue() { ledOff(); digitalWrite(PIN_LED_B,LOW); }
+void ledGreen(){ ledOff(); digitalWrite(PIN_LED_G,LOW); }
 
-#define SAMPLE_RATE BSEC_SAMPLE_RATE_ULP
-
-
-static bool g_bsec_ok = false;
-static bool g_ld_ok = false;
-static unsigned long g_lastBsecInitAttemptMs = 0;
-static unsigned long g_lastPublishMs = 0;
-static char g_mqttTopic[128] = {0};
-static char g_mqttTopicLine[128] = {0};
-static char g_macStr[20] = {0};
-void newDataCallback(const bme68xData data, const bsecOutputs outputs, Bsec2 bsec);
-
-/* Create an object of the class Bsec2 */
-Bsec2 envSensor;
-
-// Dernières valeurs BSEC pour alimentation du JSON
-struct BsecLastValues {
-  bool valid = false;
-  float temp_comp_c = 0.0f;
-  float hum_comp_pct = 0.0f;
-  uint32_t pressure_pa = 0;
-  uint32_t gas_ohms = 0;
-  float raw_temp_c = 0.0f;
-  float raw_hum_pct = 0.0f;
-  uint32_t raw_gas_ohms = 0;
-  float iaq = 0.0f;
-  float s_iaq = 0.0f;
-  float co2eq_ppm = 0.0f;
-  float bvoc_eq_ppm = 0.0f;
-  float gas_pct = 0.0f;
-  uint8_t iaq_accuracy = 0;
-  uint8_t stab_status = 0;
-  uint8_t run_in_status = 0;
-};
-static volatile BsecLastValues g_bsec_last;
-
-// Données partagées (protégées par mutex)
-struct SharedMeasurements {
-  BsecLastValues bsec;
-  bool presence = false;
-  uint16_t distance_cm = 0;
-  uint16_t lux1_raw = 0;
-  uint16_t lux2_raw = 0;
-  uint16_t mic1_pp = 0;
-  uint16_t mic2_pp = 0;
-};
-static SharedMeasurements g_shared{};
-static SemaphoreHandle_t g_sharedMutex = nullptr;
-
-
-// ------------------------------------------------
-// Traduction des codes d'erreur MQTT
-static const char* mqttError(int8_t code) {
-  switch (code) {
-    case -4: return "MQTT_CONNECTION_TIMEOUT";
-    case -3: return "MQTT_CONNECTION_LOST";
-    case -2: return "MQTT_CONNECT_FAILED";
-    case -1: return "MQTT_DISCONNECTED";
-    case  0: return "MQTT_CONNECTED";
-    case  1: return "MQTT_CONNECT_BAD_PROTOCOL";
-    case  2: return "MQTT_CONNECT_BAD_CLIENT_ID";
-    case  3: return "MQTT_CONNECT_UNAVAILABLE";
-    case  4: return "MQTT_CONNECT_BAD_CREDENTIALS";
-    case  5: return "MQTT_CONNECT_NOT_AUTHORIZED";
-  }
-  return "UNKNOWN";
-}
-
-void errLeds(void)
-{
-  digitalWrite(PIN_LED_R, HIGH);
-  delay(100);
-  digitalWrite(PIN_LED_R, LOW);
-  delay(100);
-}
-
-void checkBsecStatus(Bsec2 bsec)
-{
-  if (bsec.status < BSEC_OK)
-  {
-    Serial.println("BSEC error code : " + String(bsec.status));
-    errLeds(); /* Halt in case of failure */
-  }
-  else if (bsec.status > BSEC_OK)
-  {
-    Serial.println("BSEC warning code : " + String(bsec.status));
-  }
-
-  if (bsec.sensor.status < BME68X_OK)
-  {
-    Serial.println("BME68X error code : " + String(bsec.sensor.status));
-    errLeds(); /* Halt in case of failure */
-  }
-  else if (bsec.sensor.status > BME68X_OK)
-  {
-    Serial.println("BME68X warning code : " + String(bsec.sensor.status));
+// Blink blue N times to show 3rd digit of version
+void blinkVersion() {
+  int patch = 0;
+  // Extract patch number: 1.0.6 → 6, 1.10.3 → 3, etc.
+  const char* p = FW_VERSION;
+  for (int dots = 0; *p; p++) { if (*p == '.') dots++; if (dots == 2) { patch = atoi(p+1); break; } }
+  if (patch <= 0) patch = 1;
+  for (int i = 0; i < patch; i++) {
+    ledBlue(); delay(LED_BLINK_MS);
+    ledOff();   delay(LED_BLINK_MS);
   }
 }
-// ------------------------------------------------
-// Connexion au WiFi, avec logs
+
 void connectWiFi() {
-  if (WiFi.status() == WL_CONNECTED) return;
-
-  Serial.printf("[WiFi] Connexion à \"%s\"...\n", WIFI_SSID);
+  ledBlue();
+  Serial.printf("[WiFi] %s...\n", WIFI_SSID);
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
-
-  int dots = 0;
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-    if (++dots % 40 == 0) Serial.println();
-  }
-  Serial.println("\n[WiFi] Connecté");
-  Serial.printf("[WiFi] IP       : %s\n", WiFi.localIP().toString().c_str());
-  Serial.printf("[WiFi] Gateway  : %s\n", WiFi.gatewayIP().toString().c_str());
-  Serial.printf("[WiFi] RSSI     : %d dBm\n", WiFi.RSSI());
+  for (int i=0; i<60; i++) { if (WiFi.status()==WL_CONNECTED) break; delay(250); }
+  if (WiFi.status()==WL_CONNECTED) {
+    Serial.printf("[WiFi] OK IP:%s\n", WiFi.localIP().toString().c_str());
+    // Blink version after WiFi connect
+    blinkVersion();
+    ledGreen(); greenOnAt=millis();
+  } else { Serial.println("[WiFi] FAIL"); ledOff(); }
 }
 
-// ------------------------------------------------
-// Connexion au broker MQTT, avec logs d'erreur
 void connectMQTT() {
   if (mqtt.connected()) return;
-
-  mqtt.setServer(MQTT_HOST, MQTT_PORT);
-  Serial.printf("\n[MQTT] Connexion à %s:%u ...\n", MQTT_HOST, MQTT_PORT);
-  Serial.printf("[MQTT] ClientID : %s\n", CLIENT_ID);
-  Serial.printf("[MQTT] User     : %s\n", MQTT_USER);
-
-  if (mqtt.connect(CLIENT_ID, MQTT_USER, MQTT_PASS)) {
-    Serial.println("[MQTT] Connecté");
-  } else {
-    Serial.printf("[MQTT] Échec rc=%d (%s)\n", mqtt.state(), mqttError(mqtt.state()));
-  }
-}
-
-
-
-void newDataCallback(const bme68xData data, const bsecOutputs outputs, Bsec2 bsec)
-{
-  if (!outputs.nOutputs)
-  {
-    return;
-  }
-
-  Serial.println("BSEC outputs:\n\tTime stamp = " + String((int)(outputs.output[0].time_stamp / INT64_C(1000000))));
-  for (uint8_t i = 0; i < outputs.nOutputs; i++)
-  {
-    const bsecData output = outputs.output[i];
-    switch (output.sensor_id)
-    {
-    case BSEC_OUTPUT_IAQ:
-      Serial.println("\tIAQ = " + String(output.signal));
-      Serial.println("\tIAQ accuracy = " + String((int)output.accuracy));
-      g_bsec_last.iaq = output.signal;
-      g_bsec_last.iaq_accuracy = output.accuracy;
-      break;
-    case BSEC_OUTPUT_RAW_TEMPERATURE:
-      Serial.println("\tTemperature = " + String(output.signal));
-      g_bsec_last.raw_temp_c = output.signal;
-      break;
-    case BSEC_OUTPUT_RAW_PRESSURE:
-      Serial.println("\tPressure = " + String(output.signal));
-      // La lib affiche en hPa dans l'exemple → convertir en Pa pour le JSON
-      g_bsec_last.pressure_pa = (uint32_t)(output.signal * 100.0f + 0.5f);
-      break;
-    case BSEC_OUTPUT_RAW_HUMIDITY:
-      Serial.println("\tHumidity = " + String(output.signal));
-      g_bsec_last.raw_hum_pct = output.signal;
-      break;
-    case BSEC_OUTPUT_RAW_GAS:
-      Serial.println("\tGas resistance = " + String(output.signal));
-      g_bsec_last.raw_gas_ohms = (uint32_t)(output.signal + 0.5f);
-      g_bsec_last.gas_ohms = (uint32_t)(output.signal + 0.5f);
-      break;
-    case BSEC_OUTPUT_STABILIZATION_STATUS:
-      Serial.println("\tStabilization status = " + String(output.signal));
-      g_bsec_last.stab_status = (uint8_t)output.signal;
-      break;
-    case BSEC_OUTPUT_RUN_IN_STATUS:
-      Serial.println("\tRun in status = " + String(output.signal));
-      g_bsec_last.run_in_status = (uint8_t)output.signal;
-      break;
-    case BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE:
-      Serial.println("\tCompensated temperature = " + String(output.signal));
-      g_bsec_last.temp_comp_c = output.signal;
-      break;
-    case BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY:
-      Serial.println("\tCompensated humidity = " + String(output.signal));
-      g_bsec_last.hum_comp_pct = output.signal;
-      break;
-    case BSEC_OUTPUT_STATIC_IAQ:
-      Serial.println("\tStatic IAQ = " + String(output.signal));
-      g_bsec_last.s_iaq = output.signal;
-      break;
-    case BSEC_OUTPUT_CO2_EQUIVALENT:
-      Serial.println("\tCO2 Equivalent = " + String(output.signal));
-      g_bsec_last.co2eq_ppm = output.signal;
-      break;
-    case BSEC_OUTPUT_BREATH_VOC_EQUIVALENT:
-      Serial.println("\tbVOC equivalent = " + String(output.signal));
-      g_bsec_last.bvoc_eq_ppm = output.signal;
-      break;
-    case BSEC_OUTPUT_GAS_PERCENTAGE:
-      Serial.println("\tGas percentage = " + String(output.signal));
-      g_bsec_last.gas_pct = output.signal;
-      break;
-    case BSEC_OUTPUT_COMPENSATED_GAS:
-      Serial.println("\tCompensated gas = " + String(output.signal));
-      break;
-    default:
-      break;
-    }
-  }
-  g_bsec_last.valid = true;
-}
-// ------------------------------------------------
-// Initialisation BSEC2 (scan @0x76 puis @0x77) - échantillonnage Low Power
-bool initBSEC() {
-  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
-
-  // Pilote le sélecteur d'adresse si câblé (LOW=0x76, HIGH=0x77)
-  pinMode(PIN_BME_INT, OUTPUT);
-  digitalWrite(PIN_BME_INT, HIGH);
-
-  pinMode(PIN_BME_MODE, OUTPUT);
-  digitalWrite(PIN_BME_MODE, LOW);
-  delay(5);
-
-  
-  
-  bsecSensor sensorList[] = {
-    BSEC_OUTPUT_IAQ,
-    BSEC_OUTPUT_RAW_TEMPERATURE,
-    BSEC_OUTPUT_RAW_PRESSURE,
-    BSEC_OUTPUT_RAW_HUMIDITY,
-    BSEC_OUTPUT_RAW_GAS,
-    BSEC_OUTPUT_STABILIZATION_STATUS,
-    BSEC_OUTPUT_RUN_IN_STATUS,
-    BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE,
-    BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY,
-    BSEC_OUTPUT_STATIC_IAQ,
-    BSEC_OUTPUT_CO2_EQUIVALENT,
-    BSEC_OUTPUT_BREATH_VOC_EQUIVALENT,
-    BSEC_OUTPUT_GAS_PERCENTAGE,
-    BSEC_OUTPUT_COMPENSATED_GAS};
-
-Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
-
-/* Initialize the library and interfaces */
-if (!envSensor.begin(BME68X_I2C_ADDR_LOW, Wire))
-{
-  checkBsecStatus(envSensor);
-}
-
-/*
- *	The default offset provided has been determined by testing the sensor in LP and ULP mode on application board 3.0
- *	Please update the offset value after testing this on your product
- */
-if (SAMPLE_RATE == BSEC_SAMPLE_RATE_ULP)
-{
-  envSensor.setTemperatureOffset(TEMP_OFFSET_ULP);
-}
-else if (SAMPLE_RATE == BSEC_SAMPLE_RATE_LP)
-{
-  envSensor.setTemperatureOffset(TEMP_OFFSET_LP);
-}
-
-/* Subsribe to the desired BSEC2 outputs */
-if (!envSensor.updateSubscription(sensorList, ARRAY_LEN(sensorList), SAMPLE_RATE))
-{
-  checkBsecStatus(envSensor);
-}
-
-/* Whenever new data is available call the newDataCallback function */
-envSensor.attachCallback(newDataCallback);
-
-Serial.println("BSEC library version " +
-               String(envSensor.version.major) + "." + String(envSensor.version.minor) + "." + String(envSensor.version.major_bugfix) + "." + String(envSensor.version.minor_bugfix));
-return true;
-}
-
-// ------------------------------------------------
-// Initialisation du LD2410 - parser custom (lib bypass)
-bool initLD2410() {
-  static bool serial_started = false;
-  if (!serial_started) {
-    RadarSerial.begin(256000, SERIAL_8N1, PIN_LD2410_RX_ESP, PIN_LD2410_TX_ESP);
-    serial_started = true;
-    Serial.println("[LD2410] UART @256000 baud, parser custom");
-  }
-  return true; // Toujours OK, on parse directement les frames
-}
-
-// Parser custom LD2410 - lit les frames F4F3F2F1...F8F7F6F5
-// Frame target data (cyclic mode):
-//   F4 F3 F2 F1 | LL LL | 02 AA | STATE | MD_L MD_H | ME | SD_L SD_H | SE | DD_L DD_H | 55 | CK | F8 F7 F6 F5
-// STATE: 0=none, 1=moving, 2=stationary, 3=both
-static struct {
-  bool valid;
-  uint8_t state;
-  uint16_t moving_dist_cm;
-  uint8_t moving_energy;
-  uint16_t still_dist_cm;
-  uint8_t still_energy;
-  uint16_t detection_dist_cm;
-  unsigned long last_update_ms;
-} g_ld_data = {};
-
-void parseLD2410Stream() {
-  static uint8_t buf[64];
-  static size_t pos = 0;
-  static const uint8_t HDR[4] = {0xF4, 0xF3, 0xF2, 0xF1};
-
-  while (RadarSerial.available()) {
-    uint8_t b = RadarSerial.read();
-    if (pos < sizeof(buf)) buf[pos++] = b;
-
-    // Cherche le header
-    if (pos < 4) continue;
-    if (memcmp(buf, HDR, 4) != 0) {
-      // shift left
-      memmove(buf, buf + 1, pos - 1);
-      pos--;
-      continue;
-    }
-    // On a le header. Attendre au moins 6 bytes pour lire la longueur.
-    if (pos < 6) continue;
-    uint16_t len = buf[4] | (buf[5] << 8);
-    size_t total = 4 + 2 + len + 4; // header + len + payload + footer
-    if (total > sizeof(buf)) { pos = 0; continue; } // trop grand, reset
-    if (pos < total) continue;
-
-    // Verifier footer
-    if (buf[total-4] == 0xF8 && buf[total-3] == 0xF7 &&
-        buf[total-2] == 0xF6 && buf[total-1] == 0xF5) {
-      // Frame complete - parser type 02 AA (target data)
-      if (len >= 11 && buf[6] == 0x02 && buf[7] == 0xAA) {
-        g_ld_data.state             = buf[8];
-        g_ld_data.moving_dist_cm    = buf[9]  | (buf[10] << 8);
-        g_ld_data.moving_energy     = buf[11];
-        g_ld_data.still_dist_cm     = buf[12] | (buf[13] << 8);
-        g_ld_data.still_energy      = buf[14];
-        g_ld_data.detection_dist_cm = buf[15] | (buf[16] << 8);
-        g_ld_data.valid = true;
-        g_ld_data.last_update_ms = millis();
-      }
-    }
-    // Avancer apres ce frame (qu'il soit valide ou non)
-    if (pos > total) memmove(buf, buf + total, pos - total);
-    pos = (pos > total) ? pos - total : 0;
-  }
-}
-
-
-// ------------------------------------------------
-// Lecture LD2410 via parser custom. presence=true si mouvement ou stationnaire.
-bool readLD2410(bool& presence, uint16_t& distance_cm) {
-  parseLD2410Stream();
-
-  // Si pas de frame recu depuis 2s, considere offline
-  if (!g_ld_data.valid || (millis() - g_ld_data.last_update_ms > 2000)) {
-    presence = false;
-    distance_cm = 0;
-    return false;
-  }
-
-  bool motion = (g_ld_data.state & 0x01) != 0;
-  bool still  = (g_ld_data.state & 0x02) != 0;
-  presence = motion || still;
-
-  if (motion && g_ld_data.moving_dist_cm > 0) {
-    distance_cm = g_ld_data.moving_dist_cm;
-  } else if (still && g_ld_data.still_dist_cm > 0) {
-    distance_cm = g_ld_data.still_dist_cm;
-  } else {
-    distance_cm = g_ld_data.detection_dist_cm;
-  }
-  return true;
-}
-
-// ------------------------------------------------
-// Lecture luminosité (deux entrées analogiques). Retourne toujours true.
-bool readLightSensors(uint16_t& lux1_raw, uint16_t& lux2_raw) {
-  lux1_raw = analogRead(PIN_LUX1_AIN);
-  lux2_raw = analogRead(PIN_LUX2_AIN);
-  return true;
-}
-
-// ------------------------------------------------
-// Mesure simple du niveau sonore par pic-à-pic (P2P) sur ~50 ms
-bool readMicrophones(uint16_t& mic1_pp, uint16_t& mic2_pp) {
-  const uint32_t windowMs = 50;
-  uint32_t t0 = millis();
-
-  uint16_t min1 = 4095, max1 = 0;
-  uint16_t min2 = 4095, max2 = 0;
-
-  while ((millis() - t0) < windowMs) {
-    uint16_t s1 = analogRead(PIN_MIC1);
-    uint16_t s2 = analogRead(PIN_MIC2);
-    if (s1 < min1) min1 = s1;
-    if (s1 > max1) max1 = s1;
-    if (s2 < min2) min2 = s2;
-    if (s2 > max2) max2 = s2;
-    delay(1);
-  }
-
-  mic1_pp = (max1 > min1) ? (max1 - min1) : 0;
-  mic2_pp = (max2 > min2) ? (max2 - min2) : 0;
-  return true;
-}
-
-// ------------------------------------------------
-// Construit et publie le JSON de mesures sur MQTT
-// ------------------------------------------------
-// Construit et publie le JSON de mesures sur MQTT (format unique JSON)
-// ------------------------------------------------
-void publishMeasurements() {
-  float temperature_c = 0.0f;
-  float humidity_pct = 0.0f;
-  uint32_t pressure_pa = 0;
-  uint32_t gas_ohms = 0;
-
-  float raw_temperature_c = 0.0f;
-  float raw_humidity_pct = 0.0f;
-  uint32_t raw_gas_ohms = 0;
-
-  float iaq = 0.0f;
-  float s_iaq = 0.0f;
-  float co2eq_ppm = 0.0f;
-  float bvoc_eq_ppm = 0.0f;
-  float gas_pct = 0.0f;
-  uint8_t iaq_accuracy = 0;
-  uint8_t stab_status = 0;
-  uint8_t run_in_status = 0;
-
-  // --- Données BSEC si valides ---
-  if (g_bsec_ok && g_bsec_last.valid) {
-    temperature_c    = g_bsec_last.temp_comp_c;
-    humidity_pct     = g_bsec_last.hum_comp_pct;
-    pressure_pa      = g_bsec_last.pressure_pa;
-    gas_ohms         = g_bsec_last.gas_ohms;
-
-    raw_temperature_c = g_bsec_last.raw_temp_c;
-    raw_humidity_pct  = g_bsec_last.raw_hum_pct;
-    raw_gas_ohms      = g_bsec_last.raw_gas_ohms;
-
-    iaq           = g_bsec_last.iaq;
-    s_iaq         = g_bsec_last.s_iaq;
-    co2eq_ppm     = g_bsec_last.co2eq_ppm;
-    bvoc_eq_ppm   = g_bsec_last.bvoc_eq_ppm;
-    gas_pct       = g_bsec_last.gas_pct;
-    iaq_accuracy  = g_bsec_last.iaq_accuracy;
-    stab_status   = g_bsec_last.stab_status;
-    run_in_status = g_bsec_last.run_in_status;
-  }
-
-  // --- Radar + ADC depuis le buffer partagé ---
-  bool presence = false;
-  uint16_t target_distance_cm = 0;
-  uint16_t lux1_raw = 0, lux2_raw = 0;
-  uint16_t mic1_pp = 0, mic2_pp = 0;
-  if (g_sharedMutex && xSemaphoreTake(g_sharedMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-    presence = g_shared.presence;
-    target_distance_cm = g_shared.distance_cm;
-    lux1_raw = g_shared.lux1_raw;
-    lux2_raw = g_shared.lux2_raw;
-    mic1_pp = g_shared.mic1_pp;
-    mic2_pp = g_shared.mic2_pp;
-    xSemaphoreGive(g_sharedMutex);
-  }
-  uint8_t people_count = presence ? 1 : 0;
-
-  // --- Système ---
-  int rssi_dbm = WiFi.RSSI();
-  unsigned long uptime_s = millis() / 1000UL;
-  unsigned long timestamp_ms = millis();
-
-  // --- JSON unique pour Telegraf (data_format = "json") ---
-  char payload[1024];
-  int n = snprintf(
-    payload, sizeof(payload),
-    "{"
-      "\"product\":\"%s\","
-      "\"client_code\":\"%s\","
-      "\"device_id\":\"%s\","
-      "\"fw_version\":\"%s\","
-      "\"temperature_c\":%.2f,"
-      "\"humidity_pct\":%.2f,"
-      "\"pressure_pa\":%u,"
-      "\"gas_ohms\":%u,"
-      "\"iaq\":%.2f,"
-      "\"s_iaq\":%.2f,"
-      "\"co2eq_ppm\":%.2f,"
-      "\"bvoc_eq_ppm\":%.2f,"
-      "\"iaq_accuracy\":%u,"
-      "\"stab_status\":%u,"
-      "\"run_in_status\":%u,"
-      "\"gas_pct\":%.2f,"
-      "\"raw_temperature_c\":%.2f,"
-      "\"raw_humidity_pct\":%.2f,"
-      "\"raw_gas_ohms\":%u,"
-      "\"sensor_comp_temperature_c\":%.2f,"
-      "\"sensor_comp_humidity_pct\":%.2f,"
-      "\"sensor_comp_gas_ohms\":%u,"
-      "\"lux1_raw\":%u,"
-      "\"lux2_raw\":%u,"
-      "\"sound_mic1_pp\":%u,"
-      "\"sound_mic2_pp\":%u,"
-      "\"presence\":%s,"
-      "\"people_count\":%u,"
-      "\"target_distance_cm\":%u,"
-      "\"rssi_dbm\":%d,"
-      "\"uptime_s\":%lu,"
-      "\"timestamp_ms\":%lu"
-    "}",
-    PRODUCT,
-    CLIENT_CODE,
-    DEVICE_ID,
-    FW_VERSION,
-    temperature_c,
-    humidity_pct,
-    pressure_pa,
-    gas_ohms,
-    iaq,
-    s_iaq,
-    co2eq_ppm,
-    bvoc_eq_ppm,
-    (unsigned)iaq_accuracy,
-    (unsigned)stab_status,
-    (unsigned)run_in_status,
-    gas_pct,
-    raw_temperature_c,
-    raw_humidity_pct,
-    (unsigned)raw_gas_ohms,
-    temperature_c,
-    humidity_pct,
-    gas_ohms,
-    (unsigned)lux1_raw,
-    (unsigned)lux2_raw,
-    (unsigned)mic1_pp,
-    (unsigned)mic2_pp,
-    presence ? "true" : "false",
-    (unsigned)people_count,
-    (unsigned)target_distance_cm,
-    rssi_dbm,
-    uptime_s,
-    timestamp_ms
-  );
-
-  if (n < 0 || n >= (int)sizeof(payload)) {
-    Serial.println("[PUB] Erreur format JSON (buffer trop petit)");
-    return;
-  }
-
-  Serial.printf("[PUB] Topic : %s\n", g_mqttTopic);
-  Serial.printf("[PUB] JSON  : %s\n", payload);
-
-  bool ok = mqtt.publish(g_mqttTopic, payload);
-  Serial.printf("[PUB] Publish OK ? %s\n", ok ? "YES" : "NO");
-}
-
-// ------------------------------------------------
-// Helpers OTA: parsing simple JSON manifest, SemVer, SHA256 et Update
-static bool jsonExtractString(const String& json, const char* key, String& out) {
-  String pat = String("\"") + key + "\":";
-  int i = json.indexOf(pat);
-  if (i < 0) return false;
-  i += pat.length();
-  // sauter espaces
-  while (i < (int)json.length() && (json[i] == ' ' || json[i] == '\t')) i++;
-  if (i >= (int)json.length() || json[i] != '\"') return false;
-  i++;
-  int j = json.indexOf('\"', i);
-  if (j < 0) return false;
-  out = json.substring(i, j);
-  return true;
-}
-
-static void parseSemVer(const String& v, int& major, int& minor, int& patch) {
-  major = minor = patch = 0;
-  int p1 = v.indexOf('.');
-  int p2 = v.indexOf('.', p1 + 1);
-  String sMaj = (p1 > 0) ? v.substring(0, p1) : v;
-  String sMin = (p1 > 0 && p2 > p1) ? v.substring(p1 + 1, p2) : "0";
-  String sPat = (p2 > 0) ? v.substring(p2 + 1) : "0";
-  // nettoyer suffixes (beta/dev)
-  for (int k = 0; k < (int)sPat.length(); ++k) {
-    if (!isDigit(sPat[k])) { sPat = sPat.substring(0, k); break; }
-  }
-  major = sMaj.toInt();
-  minor = sMin.toInt();
-  patch = sPat.toInt();
-}
-
-static int compareSemVer(const String& a, const String& b) {
-  int av1, av2, av3, bv1, bv2, bv3;
-  parseSemVer(a, av1, av2, av3);
-  parseSemVer(b, bv1, bv2, bv3);
-  if (av1 != bv1) return (av1 < bv1) ? -1 : 1;
-  if (av2 != bv2) return (av2 < bv2) ? -1 : 1;
-  if (av3 != bv3) return (av3 < bv3) ? -1 : 1;
-  return 0;
+  char cid[64]; snprintf(cid,sizeof(cid),"nl_%s",DEVICE_ID);
+  mqtt.setServer(MQTT_HOST,MQTT_PORT);
+  mqtt.connect(cid,MQTT_USER,MQTT_PASS);
 }
 
 static String toHex(const uint8_t* buf, size_t len) {
-  static const char* HEXCHARS = "0123456789abcdef";
-  String s; s.reserve(len * 2);
-  for (size_t i = 0; i < len; ++i) {
-    s += HEXCHARS[(buf[i] >> 4) & 0xF];
-    s += HEXCHARS[buf[i] & 0xF];
-  }
-  return s;
+  const char* hex="0123456789abcdef"; String s; s.reserve(len*2);
+  for (size_t i=0;i<len;i++){s+=hex[(buf[i]>>4)&0xF];s+=hex[buf[i]&0xF];} return s;
 }
-
-void checkOtaManifestAndUpdate() {
-  if (WiFi.status() != WL_CONNECTED) return;
-  WiFiClientSecure client;
-  client.setInsecure();
-  HTTPClient https;
-  https.setUserAgent(OTA_USER_AGENT);
-
-  Serial.println("[OTA] Vérification manifest (stable)...");
-  if (!https.begin(client, OTA_MANIFEST_URL)) {
-    Serial.println("[OTA] begin(manifest) échoué");
-    return;
-  }
-  int code = https.GET();
-  if (code != HTTP_CODE_OK) {
-    Serial.printf("[OTA] Manifest HTTP %d\n", code);
-    https.end();
-    return;
-  }
-  String body = https.getString();
-  https.end();
-
-  String latest, minVersion, binUrl, sha256hex;
-  if (!jsonExtractString(body, "latest", latest) ||
-      !jsonExtractString(body, "min", minVersion) ||
-      !jsonExtractString(body, "bin", binUrl) ||
-      !jsonExtractString(body, "sha256", sha256hex)) {
-    Serial.println("[OTA] Manifest incomplet");
-    return;
-  }
-  Serial.printf("[OTA] latest=%s min=%s\n", latest.c_str(), minVersion.c_str());
-
-  if (compareSemVer(String(FW_VERSION), minVersion) < 0) {
-    Serial.println("[OTA] Version locale trop ancienne pour min, ignorer.");
-    return;
-  }
-  if (compareSemVer(String(FW_VERSION), latest) >= 0) {
-    Serial.println("[OTA] Déjà à jour.");
-    return;
-  }
-
-  // Téléchargement binaire et vérification SHA-256
-  if (!https.begin(client, binUrl)) {
-    Serial.println("[OTA] begin(bin) échoué");
-    return;
-  }
-  code = https.GET();
-  if (code != HTTP_CODE_OK) {
-    Serial.printf("[OTA] Bin HTTP %d\n", code);
-    https.end();
-    return;
-  }
-  int len = https.getSize();
-  WiFiClient* stream = https.getStreamPtr();
-
-  mbedtls_sha256_context ctx;
-  mbedtls_sha256_init(&ctx);
-  mbedtls_sha256_starts_ret(&ctx, 0); // 0 = SHA-256
-
-  if (!Update.begin(len > 0 ? len : UPDATE_SIZE_UNKNOWN)) {
-    Serial.printf("[OTA] Update.begin err=%u\n", Update.getError());
-    https.end();
-    mbedtls_sha256_free(&ctx);
-    return;
-  }
-  uint8_t buf[2048];
-  size_t total = 0;
-  while (https.connected() && (len > 0 || len == -1)) {
-    size_t avail = stream->available();
-    if (!avail) { delay(1); continue; }
-    size_t rd = stream->readBytes(buf, avail > sizeof(buf) ? sizeof(buf) : avail);
-    if (rd == 0) break;
-    total += rd;
-    mbedtls_sha256_update_ret(&ctx, buf, rd);
-    if (Update.write(buf, rd) != rd) {
-      Serial.printf("[OTA] Ecriture échouée err=%u\n", Update.getError());
-      Update.abort();
-      https.end();
-      mbedtls_sha256_free(&ctx);
-      return;
-    }
-    if (len > 0) len -= rd;
-  }
-  https.end();
-
-  uint8_t digest[32];
-  mbedtls_sha256_finish_ret(&ctx, digest);
-  mbedtls_sha256_free(&ctx);
-  String digestHex = toHex(digest, sizeof(digest));
-
+void checkOTA() {
+  if (WiFi.status()!=WL_CONNECTED) return;
+  HTTPClient http; http.setTimeout(10000); http.begin("http://91.99.26.43/firmware/latest.json");
+  if (http.GET()!=200){http.end();return;}
+  String body=http.getString();http.end();
+  auto extract=[&](const char* key)->String{
+    int i=body.indexOf("\""+String(key)+"\"");if(i<0)return"";
+    i=body.indexOf(":",i);if(i<0)return"";
+    i=body.indexOf("\"",i);if(i<0)return"";
+    int j=body.indexOf("\"",i+1);if(j<0)return"";
+    return body.substring(i+1,j);
+  };
+  String latest=extract("version"),url=extract("url"),sha256hex=extract("sha256");
+  if(!latest.length()||!url.length()||!sha256hex.length())return;
   sha256hex.toLowerCase();
-  digestHex.toLowerCase();
-  if (digestHex != sha256hex) {
-    Serial.printf("[OTA] SHA256 mismatch: got=%s expected=%s\n", digestHex.c_str(), sha256hex.c_str());
-    Update.abort();
-    return;
+  if(latest==FW_VERSION)return;
+  Serial.printf("[OTA] Downloading %s...\n",latest.c_str());
+  HTTPClient dl;dl.setTimeout(30000);dl.begin(url);
+  if(dl.GET()!=200){dl.end();return;}
+  int len=dl.getSize();
+  mbedtls_sha256_context ctx;mbedtls_sha256_init(&ctx);mbedtls_sha256_starts_ret(&ctx,0);
+  if(!Update.begin(len>0?len:UPDATE_SIZE_UNKNOWN)){dl.end();mbedtls_sha256_free(&ctx);return;}
+  WiFiClient* stream=dl.getStreamPtr();
+  uint8_t buf[1024];size_t total=0;
+  while(dl.connected()&&(len>0||len==-1)){
+    size_t avail=stream->available();if(!avail){delay(1);continue;}
+    size_t rd=stream->readBytes(buf,avail>sizeof(buf)?sizeof(buf):avail);
+    if(!rd)break;total+=rd;
+    mbedtls_sha256_update_ret(&ctx,buf,rd);
+    if(Update.write(buf,rd)!=rd){Update.abort();break;}
+    if(len>0)len-=rd;
   }
-
-  if (!Update.end()) {
-    Serial.printf("[OTA] Update.end err=%u\n", Update.getError());
-    return;
-  }
-  if (Update.isFinished()) {
-    Serial.printf("[OTA] MAJ vers %s OK, reboot...\n", latest.c_str());
-    delay(200);
-    ESP.restart();
-  } else {
-    Serial.println("[OTA] Update non finalisée");
-  }
+  dl.end();
+  uint8_t digest[32];mbedtls_sha256_finish_ret(&ctx,digest);mbedtls_sha256_free(&ctx);
+  String got=toHex(digest,32);got.toLowerCase();
+  if(got!=sha256hex){Serial.println("[OTA] SHA256 mismatch");Update.abort();return;}
+  if(!Update.end()||!Update.isFinished()){Serial.println("[OTA] Flash failed");return;}
+  Serial.println("[OTA] OK — rebooting");delay(200);ESP.restart();
 }
 
-
-// ------------------------------------------------
-// Setup principal
 void setup() {
-  Serial.begin(115200);
-  delay(2000);
-  Serial.println();
-  Serial.println("===== Noisyless Environmental Sensor =====");
-
-  // LEDs éteintes (actif bas)
-  //pinMode(PIN_BME_INT, OUTPUT);
-  //digitalWrite(PIN_BME_INT, LOW);
-  pinMode(PIN_LED_R, OUTPUT);
-  pinMode(PIN_LED_G, OUTPUT);
-  pinMode(PIN_LED_B, OUTPUT);
-  digitalWrite(PIN_LED_R, LOW);
-  digitalWrite(PIN_LED_G, HIGH);
-  digitalWrite(PIN_LED_B, HIGH);
-
-
-
-  // Connexions
-  Serial.println("connecting to WiFi...");
-  connectWiFi();
-
-  // MQTT
-  Serial.println("connecting to MQTT...");
-  mqtt.setServer(MQTT_HOST, MQTT_PORT);
-  mqtt.setBufferSize(1024);
-
-  // Topic MQTT: esp32/noisyless/<MAC>/datas  (MAC sans deux-points)
-  String mac = WiFi.macAddress();
-  mac.replace(":", "");
-  mac.toUpperCase();
-  strlcpy(g_macStr, mac.c_str(), sizeof(g_macStr));
-  snprintf(g_mqttTopic, sizeof(g_mqttTopic), "esp32/noisyless/%s/datas", mac.c_str());
-  snprintf(g_mqttTopicLine, sizeof(g_mqttTopicLine), "esp32/noisyless/%s/line", mac.c_str());
-
-  Serial.println("initializing sensors...");
-  // Capteurs
-  
-  g_bsec_ok = initBSEC();
-  if (!g_bsec_ok) {
-    Serial.println("[BSEC2] Attention: initialisation BSEC2 échouée.");
-  }
-  Serial.println("BSEC2 initialized");
-  g_lastBsecInitAttemptMs = millis();
-
-  g_ld_ok = initLD2410();
-
-  // Première connexion MQTT
-    connectMQTT();
-  Serial.println("MQTT connected");
-  
-  digitalWrite(PIN_LED_R, HIGH);
-  digitalWrite(PIN_LED_G, HIGH);
-  digitalWrite(PIN_LED_B, HIGH);
-
-  // ====== FORCE OTA CHECK AT BOOT ======
-  Serial.println("[OTA] Forcing OTA check at boot...");
-  checkOtaManifestAndUpdate();
-  // =====================================
-
-  // Mutex partagé
-  g_sharedMutex = xSemaphoreCreateMutex();
-
-  // ====== FreeRTOS Tasks ======
-  // Tâche MQTT (loop + publication périodique + OTA périodique)
-  xTaskCreatePinnedToCore(
-    [](void*) {
-      unsigned long lastPub = 0;
-      unsigned long lastOta = 0;
-      for (;;) {
-        if (WiFi.status() != WL_CONNECTED) connectWiFi();
-        if (!mqtt.connected()) connectMQTT();
-  mqtt.loop();
-  unsigned long now = millis();
-        if (now - lastPub >= PUBLISH_INTERVAL_MS) {
-    lastPub = now;
-          publishMeasurements();
-        }
-        if (now - lastOta >= OTA_CHECK_INTERVAL_MS) {
-          lastOta = now;
-          // Vérification OTA via manifest (canal stable)
-          // Non bloquant au-delà du téléchargement lui-même; exécuté rarement
-          // En cas d'échec, on attend la prochaine fenêtre
-          // Voir checkOtaManifestAndUpdate() plus bas
-          extern void checkOtaManifestAndUpdate();
-          checkOtaManifestAndUpdate();
-        }
-        vTaskDelay(pdMS_TO_TICKS(10));
-      }
-    },
-    "task_mqtt",
-    6144, nullptr, 1, nullptr, 1);
-
-  // Tâche ADC (lumière + son)
-  xTaskCreatePinnedToCore(
-    [](void*) {
-      for (;;) {
-        uint16_t l1, l2, m1, m2;
-        readLightSensors(l1, l2);
-        readMicrophones(m1, m2);
-        if (g_sharedMutex && xSemaphoreTake(g_sharedMutex, pdMS_TO_TICKS(5)) == pdTRUE) {
-          g_shared.lux1_raw = l1;
-          g_shared.lux2_raw = l2;
-          g_shared.mic1_pp = m1;
-          g_shared.mic2_pp = m2;
-          xSemaphoreGive(g_sharedMutex);
-        }
-        vTaskDelay(pdMS_TO_TICKS(100));
-      }
-    },
-    "task_adc",
-    4096, nullptr, 1, nullptr, 1);
-
-  // Tache RADAR LD2410 (avec re-essai d'init si echec au boot)
-  xTaskCreatePinnedToCore(
-    [](void*) {
-      unsigned long lastInitTry = 0;
-      for (;;) {
-        if (!g_ld_ok) {
-          unsigned long now = millis();
-          if (now - lastInitTry >= 5000UL) {
-            lastInitTry = now;
-            g_ld_ok = initLD2410();
-          }
-        } else {
-          bool pres; uint16_t dist;
-          readLD2410(pres, dist);
-          if (g_sharedMutex && xSemaphoreTake(g_sharedMutex, pdMS_TO_TICKS(5)) == pdTRUE) {
-            g_shared.presence = pres;
-            g_shared.distance_cm = dist;
-            xSemaphoreGive(g_sharedMutex);
-          }
-        }
-        vTaskDelay(pdMS_TO_TICKS(RADAR_READ_PERIOD_MS));
-      }
-    },
-    "task_ld2410",
-    4096, nullptr, 1, nullptr, 0);
-
-  // Tâche BSEC2 (run)
-  xTaskCreatePinnedToCore(
-    [](void*) {
-      for (;;) {
-        if (!envSensor.run()) {
-          checkBsecStatus(envSensor);
-        } else {
-          if (g_sharedMutex && xSemaphoreTake(g_sharedMutex, pdMS_TO_TICKS(5)) == pdTRUE) {
-            g_shared.bsec.valid          = g_bsec_last.valid;
-            g_shared.bsec.temp_comp_c    = g_bsec_last.temp_comp_c;
-            g_shared.bsec.hum_comp_pct   = g_bsec_last.hum_comp_pct;
-            g_shared.bsec.pressure_pa    = g_bsec_last.pressure_pa;
-            g_shared.bsec.gas_ohms       = g_bsec_last.gas_ohms;
-            g_shared.bsec.raw_temp_c     = g_bsec_last.raw_temp_c;
-            g_shared.bsec.raw_hum_pct    = g_bsec_last.raw_hum_pct;
-            g_shared.bsec.raw_gas_ohms   = g_bsec_last.raw_gas_ohms;
-            g_shared.bsec.iaq            = g_bsec_last.iaq;
-            g_shared.bsec.s_iaq          = g_bsec_last.s_iaq;
-            g_shared.bsec.co2eq_ppm      = g_bsec_last.co2eq_ppm;
-            g_shared.bsec.bvoc_eq_ppm    = g_bsec_last.bvoc_eq_ppm;
-            g_shared.bsec.gas_pct        = g_bsec_last.gas_pct;
-            g_shared.bsec.iaq_accuracy   = g_bsec_last.iaq_accuracy;
-            g_shared.bsec.stab_status    = g_bsec_last.stab_status;
-            g_shared.bsec.run_in_status  = g_bsec_last.run_in_status;
-            xSemaphoreGive(g_sharedMutex);
-          }
-        }
-        vTaskDelay(pdMS_TO_TICKS(50));
-      }
-    },
-    "task_bsec",
-    6144, nullptr, 1, nullptr, 0);
+  Serial.begin(115200);delay(500);
+  pinMode(PIN_LED_R,OUTPUT);pinMode(PIN_LED_G,OUTPUT);pinMode(PIN_LED_B,OUTPUT);
+  ledRed();  // Boot = red
+  Serial.println("\n===== NOISYLESS v"+String(FW_VERSION)+" =====");
+  analogReadResolution(12);
+  connectWiFi();  // blue → version blink → green
+  String mac=WiFi.macAddress();mac.replace(":","");mac.toUpperCase();
+  snprintf(DEVICE_ID,sizeof(DEVICE_ID),"NL-%s",mac.c_str());
+  snprintf(MQTT_TOPIC,sizeof(MQTT_TOPIC),"esp32/noisyless/%s/datas",mac.c_str());
+  Serial.printf("[ID] %s\n",DEVICE_ID);
+  connectMQTT();
+  lastOtaCheck=millis();
+  Serial.println("[OK]");
 }
 
-// ------------------------------------------------
-// Loop principale
 void loop() {
-  vTaskDelay(pdMS_TO_TICKS(100)); // boucle idle, les tâches gèrent tout
+  unsigned long now=millis();
+
+  // WiFi watchdog
+  if (WiFi.status() != WL_CONNECTED) connectWiFi();
+  if (!mqtt.connected()) connectMQTT();
+  mqtt.loop();
+
+  // LED: RED if WiFi lost, else green timing
+  if (WiFi.status() != WL_CONNECTED) {
+    ledRed();
+  } else {
+    // LED green: 1s after connect, then off
+    if (greenOnAt > 0 && now - greenOnAt > 1000) { greenOnAt = 0; ledOff(); }
+    // Publish flash: 200ms green, then back to off (unless greenOnAt still active)
+    if (pubFlashOnAt > 0 && now - pubFlashOnAt > 200) { pubFlashOnAt = 0; if (greenOnAt==0) ledOff(); }
+  }
+
+  // OTA check every 60s
+  if (now - lastOtaCheck >= OTA_INTERVAL) { lastOtaCheck = now; checkOTA(); }
+
+  // Publish sensors every 10s
+  if (now - lastPub >= PUB_INTERVAL) {
+    lastPub = now;
+    uint16_t lux1=analogRead(PIN_LUX1_AIN), lux2=analogRead(PIN_LUX2_AIN);
+    unsigned long t0=now; uint16_t min1=4095,max1=0,min2=4095,max2=0;
+    while(millis()-t0<50){uint16_t s1=analogRead(PIN_MIC1);uint16_t s2=analogRead(PIN_MIC2);
+      if(s1<min1)min1=s1;if(s1>max1)max1=s1;if(s2<min2)min2=s2;if(s2>max2)max2=s2;delay(1);}
+    uint16_t mic1=(max1>min1)?max1-min1:0, mic2=(max2>min2)?max2-min2:0;
+
+    char payload[512];
+    snprintf(payload,sizeof(payload),
+      "{\"product\":\"noisyless_env\",\"client_code\":\"client_demo\",\"device_id\":\"%s\",\"fw_version\":\"%s\",\"lux1_raw\":%u,\"lux2_raw\":%u,\"sound_mic1_pp\":%u,\"sound_mic2_pp\":%u,\"rssi_dbm\":%d,\"uptime_s\":%lu}",
+      DEVICE_ID,FW_VERSION,lux1,lux2,mic1,mic2,WiFi.RSSI(),millis()/1000);
+
+    // Only flash LED AFTER successful publish
+    if (mqtt.publish(MQTT_TOPIC, payload)) {
+      ledGreen(); pubFlashOnAt = now;
+    }
+  }
+  delay(10);
 }
