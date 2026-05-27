@@ -1,7 +1,7 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "min_version": "1.0.0",
-  "url": "https://github.com/mberthod/noisyless/releases/download/v1.0.0/firmware.bin",
-  "changelog": "Initial release - MQTT to VPS 91.99.26.43, BSEC2 + LD2410 sensors",
-  "hash": "sha256:pending_build"
+  "url": "https://noisyless.com/firmware/noisyless-v1.1.0-wifimanager.bin",
+  "changelog": "WiFiManager captive portal, device_id MAC unique, LED RGB status, partitions 2.5MB OTA",
+  "hash": "sha256:703182fd39b96e30f0be58201643399203b54b8f8a364c20cf46c8086c262572"
 }
