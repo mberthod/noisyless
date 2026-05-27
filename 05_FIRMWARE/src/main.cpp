@@ -1,183 +1,260 @@
-// NOISYLESS Standard v1.0.6 — S3, WiFi+MQTT+Analog, LED fix, version blink, OTA-ready
+/**
+ * main.cpp — NOISYLESS Environmental Sensor v2.0.0
+ * 
+ * ESP32-S3-MINI-1 (N8, sans PSRAM)
+ * Architecture modulaire FreeRTOS :
+ *   - task_mqtt    : WiFi/MQTT/OTA/publish (cœur 0)
+ *   - task_sensors : BME680 + LD2410 + Analog (cœur 1)
+ *   - task_led     : timings LED (cœur 0, priorité basse)
+ * 
+ * Payload MQTT (10s) : lux, mic, BME680 IAQ/CO2/VOC/T/H/P,
+ *                       LD2410 présence/distance, RSSI, uptime
+ * 
+ * LED séquence : 🔴 boot → 🔵 WiFi → 🔵×N version → 🟢 OK
+ *                🔴 si WiFi perdu, 🟢 flash 200ms sur publish
+ */
+
 #include <Arduino.h>
-#include <WiFi.h>
-#include <PubSubClient.h>
-#include <HTTPClient.h>
-#include <Update.h>
-#include <mbedtls/sha256.h>
-#include "wifi_config.h"
-#include "credentials.h"
 
-#if ARDUINO_USB_CDC_ON_BOOT
-#define HWSerial Serial0
-#define USBSerial Serial
-#else
-#define HWSerial Serial
-#define USBSerial Serial
-#endif
+// ---- Modules NOISYLESS ----
+#include "ui/led_status.h"
+#include "comm/wifi_mqtt.h"
+#include "ota/ota_manager.h"
+#include "sensors/bme680_sensor.h"
+#include "sensors/ld2410_sensor.h"
+#include "sensors/analog_sensors.h"
 
-static const int PIN_LED_R = 12;
-static const int PIN_LED_G = 13;
-static const int PIN_LED_B = 14;
-static const int PIN_LUX1_AIN = 1;
-static const int PIN_LUX2_AIN = 2;
-static const int PIN_MIC1 = 3;
-static const int PIN_MIC2 = 4;
+// ---- Version firmware ----
+#define FW_VERSION "2.0.0"
 
-WiFiClient espClient;
-PubSubClient mqtt(espClient);
+// ---- Objets globaux ----
+WifiMqtt       g_net;
+OTAManager     g_ota;
+AnalogSensors  g_analog;
+LD2410Sensor   g_radar;
+// g_bme680 déclaré dans bme680_sensor.cpp
 
-char DEVICE_ID[20];
-char MQTT_TOPIC[128];
-unsigned long lastPub = 0;
-unsigned long greenOnAt = 0;
-unsigned long pubFlashOnAt = 0;
-unsigned long lastOtaCheck = 0;
+// ---- Données partagées entre tâches (protégées par mutex) ----
+struct SharedData {
+  // BME680
+  BME680Readings bme;
+  // LD2410
+  bool     presence    = false;
+  uint16_t distance_cm = 0;
+  // Analog
+  AnalogReadings analog;
+};
+static SharedData     g_shared;
+static SemaphoreHandle_t g_mutex = nullptr;
+static bool           g_wifi_was_ok = false;
 
-const char* FW_VERSION = "1.0.8";
-const unsigned long PUB_INTERVAL = 10000;
-const unsigned long OTA_INTERVAL = 60000;
-const unsigned long LED_BLINK_MS = 150;
+// ---- Forward declarations ----
+void task_mqtt(void*);
+void task_sensors(void*);
+void task_led_tick(void*);
 
-// LED logic — INVERTED: LOW = ON, HIGH = OFF
-void ledOff()  { digitalWrite(PIN_LED_R,HIGH); digitalWrite(PIN_LED_G,HIGH); digitalWrite(PIN_LED_B,HIGH); }
-void ledRed()  { ledOff(); digitalWrite(PIN_LED_R,LOW); }
-void ledBlue() { ledOff(); digitalWrite(PIN_LED_B,LOW); }
-void ledGreen(){ ledOff(); digitalWrite(PIN_LED_G,LOW); }
-
-// Blink blue N times to show 3rd digit of version
-void blinkVersion() {
-  int patch = 0;
-  // Extract patch number: 1.0.6 → 6, 1.10.3 → 3, etc.
-  const char* p = FW_VERSION;
-  for (int dots = 0; *p; p++) { if (*p == '.') dots++; if (dots == 2) { patch = atoi(p+1); break; } }
-  if (patch <= 0) patch = 1;
-  for (int i = 0; i < patch; i++) {
-    ledBlue(); delay(LED_BLINK_MS);
-    ledOff();   delay(LED_BLINK_MS);
-  }
-}
-
-void connectWiFi() {
-  ledBlue();
-  Serial.printf("[WiFi] %s...\n", WIFI_SSID);
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-  for (int i=0; i<60; i++) { if (WiFi.status()==WL_CONNECTED) break; delay(250); }
-  if (WiFi.status()==WL_CONNECTED) {
-    Serial.printf("[WiFi] OK IP:%s\n", WiFi.localIP().toString().c_str());
-    // Blink version after WiFi connect
-    blinkVersion();
-    ledGreen(); greenOnAt=millis();
-  } else { Serial.println("[WiFi] FAIL"); ledOff(); }
-}
-
-void connectMQTT() {
-  if (mqtt.connected()) return;
-  char cid[64]; snprintf(cid,sizeof(cid),"nl_%s",DEVICE_ID);
-  mqtt.setServer(MQTT_HOST,MQTT_PORT);
-  mqtt.connect(cid,MQTT_USER,MQTT_PASS);
-}
-
-static String toHex(const uint8_t* buf, size_t len) {
-  const char* hex="0123456789abcdef"; String s; s.reserve(len*2);
-  for (size_t i=0;i<len;i++){s+=hex[(buf[i]>>4)&0xF];s+=hex[buf[i]&0xF];} return s;
-}
-void checkOTA() {
-  if (WiFi.status()!=WL_CONNECTED) return;
-  HTTPClient http; http.setTimeout(10000); http.begin("http://91.99.26.43/firmware/latest.json");
-  if (http.GET()!=200){http.end();return;}
-  String body=http.getString();http.end();
-  auto extract=[&](const char* key)->String{
-    int i=body.indexOf("\""+String(key)+"\"");if(i<0)return"";
-    i=body.indexOf(":",i);if(i<0)return"";
-    i=body.indexOf("\"",i);if(i<0)return"";
-    int j=body.indexOf("\"",i+1);if(j<0)return"";
-    return body.substring(i+1,j);
-  };
-  String latest=extract("version"),url=extract("url"),sha256hex=extract("sha256");
-  if(!latest.length()||!url.length()||!sha256hex.length())return;
-  sha256hex.toLowerCase();
-  if(latest==FW_VERSION)return;
-  Serial.printf("[OTA] Downloading %s...\n",latest.c_str());
-  HTTPClient dl;dl.setTimeout(30000);dl.begin(url);
-  if(dl.GET()!=200){dl.end();return;}
-  int len=dl.getSize();
-  mbedtls_sha256_context ctx;mbedtls_sha256_init(&ctx);mbedtls_sha256_starts_ret(&ctx,0);
-  if(!Update.begin(len>0?len:UPDATE_SIZE_UNKNOWN)){dl.end();mbedtls_sha256_free(&ctx);return;}
-  WiFiClient* stream=dl.getStreamPtr();
-  uint8_t buf[1024];size_t total=0;
-  while(dl.connected()&&(len>0||len==-1)){
-    size_t avail=stream->available();if(!avail){delay(1);continue;}
-    size_t rd=stream->readBytes(buf,avail>sizeof(buf)?sizeof(buf):avail);
-    if(!rd)break;total+=rd;
-    mbedtls_sha256_update_ret(&ctx,buf,rd);
-    if(Update.write(buf,rd)!=rd){Update.abort();break;}
-    if(len>0)len-=rd;
-  }
-  dl.end();
-  uint8_t digest[32];mbedtls_sha256_finish_ret(&ctx,digest);mbedtls_sha256_free(&ctx);
-  String got=toHex(digest,32);got.toLowerCase();
-  if(got!=sha256hex){Serial.println("[OTA] SHA256 mismatch");Update.abort();return;}
-  if(!Update.end()||!Update.isFinished()){Serial.println("[OTA] Flash failed");return;}
-  Serial.println("[OTA] OK — rebooting");delay(200);ESP.restart();
-}
-
+// ================================================================
+//  SETUP
+// ================================================================
 void setup() {
-  Serial.begin(115200);delay(500);
-  pinMode(PIN_LED_R,OUTPUT);pinMode(PIN_LED_G,OUTPUT);pinMode(PIN_LED_B,OUTPUT);
-  ledRed();  // Boot = red
-  Serial.println("\n===== NOISYLESS v"+String(FW_VERSION)+" =====");
-  analogReadResolution(12);
-  connectWiFi();  // blue → version blink → green
-  String mac=WiFi.macAddress();mac.replace(":","");mac.toUpperCase();
-  snprintf(DEVICE_ID,sizeof(DEVICE_ID),"NL-%s",mac.c_str());
-  snprintf(MQTT_TOPIC,sizeof(MQTT_TOPIC),"esp32/noisyless/%s/datas",mac.c_str());
-  Serial.printf("[ID] %s\n",DEVICE_ID);
-  connectMQTT();
-  lastOtaCheck=millis();
-  Serial.println("[OK]");
+  Serial.begin(115200);
+  delay(500);
+  Serial.printf("\n===== NOISYLESS v%s =====\n", FW_VERSION);
+  
+  // ---- LED ----
+  led_init();
+  led_set(LED_RED);  // boot
+  
+  // ---- WiFi + MQTT ----
+  led_set(LED_BLUE);  // tentative WiFi
+  if (!g_net.init()) {
+    Serial.println("[BOOT] WiFi FAIL — reboot in 5s");
+    led_set(LED_RED);
+    delay(5000);
+    ESP.restart();
+  }
+  
+  // Séquence boot visuelle
+  led_boot_sequence(FW_VERSION);
+  
+  // ---- Capteurs ----
+  Serial.println("[INIT] Capteurs...");
+  
+  // BME680
+  if (g_bme680.init()) {
+    Serial.println("[BME680] OK");
+  } else {
+    Serial.println("[BME680] SKIPPED");
+  }
+  
+  // LD2410
+  if (g_radar.init()) {
+    Serial.println("[LD2410] OK");
+  } else {
+    Serial.println("[LD2410] SKIPPED");
+  }
+  
+  // Analog
+  g_analog.init();
+  Serial.println("[ANALOG] OK");
+  
+  // ---- OTA ----
+  g_ota.init(FW_VERSION);
+  g_ota.setWifiCheck([]() -> bool { return g_net.wifi_ok(); });
+  
+  // ---- Mutex partagé ----
+  g_mutex = xSemaphoreCreateMutex();
+  
+  // ---- FreeRTOS Tasks ----
+  // Cœur 0 : MQTT + OTA (priorité normale)
+  xTaskCreatePinnedToCore(task_mqtt, "mqtt", 4096, nullptr, 1, nullptr, 0);
+  // Cœur 1 : Capteurs (priorité élevée pour BSEC2 timing)
+  xTaskCreatePinnedToCore(task_sensors, "sensors", 4096, nullptr, 2, nullptr, 1);
+  // Cœur 0 : LED timing (priorité basse)
+  xTaskCreatePinnedToCore(task_led_tick, "led", 2048, nullptr, 0, nullptr, 0);
+  
+  Serial.println("[BOOT] Ready");
+  led_set(LED_OFF);
+  
+  // Supprime la tâche setup (loop() inutilisée)
+  vTaskDelete(nullptr);
 }
 
 void loop() {
-  unsigned long now=millis();
+  // Jamais atteint — tout est en FreeRTOS
+  vTaskDelay(portMAX_DELAY);
+}
 
-  // WiFi watchdog
-  if (WiFi.status() != WL_CONNECTED) connectWiFi();
-  if (!mqtt.connected()) connectMQTT();
-  mqtt.loop();
-
-  // LED: RED if WiFi lost, else green timing
-  if (WiFi.status() != WL_CONNECTED) {
-    ledRed();
-  } else {
-    // LED green: 1s after connect, then off
-    if (greenOnAt > 0 && now - greenOnAt > 1000) { greenOnAt = 0; ledOff(); }
-    // Publish flash: 200ms green, then back to off (unless greenOnAt still active)
-    if (pubFlashOnAt > 0 && now - pubFlashOnAt > 200) { pubFlashOnAt = 0; if (greenOnAt==0) ledOff(); }
-  }
-
-  // OTA check every 60s
-  if (now - lastOtaCheck >= OTA_INTERVAL) { lastOtaCheck = now; checkOTA(); }
-
-  // Publish sensors every 10s
-  if (now - lastPub >= PUB_INTERVAL) {
-    lastPub = now;
-    uint16_t lux1=analogRead(PIN_LUX1_AIN), lux2=analogRead(PIN_LUX2_AIN);
-    unsigned long t0=now; uint16_t min1=4095,max1=0,min2=4095,max2=0;
-    while(millis()-t0<50){uint16_t s1=analogRead(PIN_MIC1);uint16_t s2=analogRead(PIN_MIC2);
-      if(s1<min1)min1=s1;if(s1>max1)max1=s1;if(s2<min2)min2=s2;if(s2>max2)max2=s2;delay(1);}
-    uint16_t mic1=(max1>min1)?max1-min1:0, mic2=(max2>min2)?max2-min2:0;
-
-    char payload[512];
-    snprintf(payload,sizeof(payload),
-      "{\"product\":\"noisyless_env\",\"client_code\":\"client_demo\",\"device_id\":\"%s\",\"fw_version\":\"%s\",\"lux1_raw\":%u,\"lux2_raw\":%u,\"sound_mic1_pp\":%u,\"sound_mic2_pp\":%u,\"rssi_dbm\":%d,\"uptime_s\":%lu}",
-      DEVICE_ID,FW_VERSION,lux1,lux2,mic1,mic2,WiFi.RSSI(),millis()/1000);
-
-    // Only flash LED AFTER successful publish
-    if (mqtt.publish(MQTT_TOPIC, payload)) {
-      ledGreen(); pubFlashOnAt = now;
+// ================================================================
+//  TASK: MQTT + Publication + OTA (Core 0)
+// ================================================================
+void task_mqtt(void*) {
+  unsigned long lastPub = 0;
+  
+  for (;;) {
+    // Maintien connexion
+    bool net_ok = g_net.tick();
+    
+    // LED rouge si WiFi perdu
+    if (!net_ok && g_wifi_was_ok) {
+      led_set(LED_RED);
     }
+    g_wifi_was_ok = net_ok;
+    
+    // Publication toutes les 10s
+    unsigned long now = millis();
+    if (net_ok && now - lastPub >= PUBLISH_INTERVAL_MS) {
+      lastPub = now;
+      
+      // Lit les données partagées
+      SharedData snapshot;
+      if (g_mutex && xSemaphoreTake(g_mutex, pdMS_TO_TICKS(10))) {
+        snapshot = g_shared;
+        xSemaphoreGive(g_mutex);
+      }
+      
+      // Construit le payload JSON
+      char payload[768];
+      const BME680Readings& b = snapshot.bme;
+      
+      if (b.valid) {
+        snprintf(payload, sizeof(payload),
+          "{"
+          "\"product\":\"noisyless_env\","
+          "\"client_code\":\"client_demo\","
+          "\"device_id\":\"%s\","
+          "\"fw_version\":\"%s\","
+          "\"lux1_raw\":%u,\"lux2_raw\":%u,"
+          "\"sound_mic1_pp\":%u,\"sound_mic2_pp\":%u,"
+          "\"presence\":%s,\"distance_cm\":%u,"
+          "\"temp_comp_c\":%.2f,\"hum_comp_pct\":%.2f,\"pressure_pa\":%u,"
+          "\"iaq\":%.1f,\"co2eq_ppm\":%.1f,\"bvoc_eq_ppm\":%.2f,"
+          "\"gas_ohms\":%u,\"iaq_accuracy\":%u,"
+          "\"stab_status\":%u,\"run_in_status\":%u,"
+          "\"rssi_dbm\":%d,\"uptime_s\":%lu"
+          "}",
+          g_net.device_id(), FW_VERSION,
+          snapshot.analog.lux1_raw, snapshot.analog.lux2_raw,
+          snapshot.analog.mic1_pp, snapshot.analog.mic2_pp,
+          snapshot.presence ? "true" : "false", snapshot.distance_cm,
+          b.temp_comp_c, b.hum_comp_pct, b.pressure_pa,
+          b.iaq, b.co2eq_ppm, b.bvoc_eq_ppm,
+          b.gas_ohms, b.iaq_accuracy,
+          b.stab_status, b.run_in_status,
+          g_net.rssi(), millis() / 1000
+        );
+      } else {
+        // Payload sans BME680
+        snprintf(payload, sizeof(payload),
+          "{"
+          "\"product\":\"noisyless_env\","
+          "\"client_code\":\"client_demo\","
+          "\"device_id\":\"%s\","
+          "\"fw_version\":\"%s\","
+          "\"lux1_raw\":%u,\"lux2_raw\":%u,"
+          "\"sound_mic1_pp\":%u,\"sound_mic2_pp\":%u,"
+          "\"presence\":%s,\"distance_cm\":%u,"
+          "\"rssi_dbm\":%d,\"uptime_s\":%lu"
+          "}",
+          g_net.device_id(), FW_VERSION,
+          snapshot.analog.lux1_raw, snapshot.analog.lux2_raw,
+          snapshot.analog.mic1_pp, snapshot.analog.mic2_pp,
+          snapshot.presence ? "true" : "false", snapshot.distance_cm,
+          g_net.rssi(), millis() / 1000
+        );
+      }
+      
+      // Publie + flash LED
+      if (g_net.publish(payload)) {
+        led_flash_green();
+      }
+    }
+    
+    // OTA check (géré par tick() avec son propre timer 60s)
+    g_ota.tick();
+    
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
-  delay(10);
+}
+
+// ================================================================
+//  TASK: Capteurs (Core 1) — lit BME680 + LD2410 + Analog
+// ================================================================
+void task_sensors(void*) {
+  for (;;) {
+    // BME680 (BSEC2 run — doit être appelé régulièrement)
+    if (g_bme680.initialized()) {
+      g_bme680.tick();
+    }
+    
+    // LD2410
+    if (g_radar.ok()) {
+      g_radar.tick();
+    }
+    
+    // Analog (bloque 50ms pour échantillonnage micros)
+    const AnalogReadings& a = g_analog.read();
+    
+    // Écrit dans la zone partagée
+    if (g_mutex && xSemaphoreTake(g_mutex, pdMS_TO_TICKS(10))) {
+      g_shared.bme         = g_bme680.last();
+      g_shared.presence    = g_radar.presence();
+      g_shared.distance_cm = g_radar.distance_cm();
+      g_shared.analog      = a;
+      xSemaphoreGive(g_mutex);
+    }
+    
+    vTaskDelay(pdMS_TO_TICKS(100));
+  }
+}
+
+// ================================================================
+//  TASK: LED timings (Core 0, priorité basse)
+// ================================================================
+void task_led_tick(void*) {
+  for (;;) {
+    // Gère les timings (vert boot, flash publish)
+    led_tick();
+    vTaskDelay(pdMS_TO_TICKS(20));
+  }
 }
