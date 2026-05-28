@@ -1,7 +1,7 @@
 {
-  "version": "0.0.2",
+  "version": "0.0.3",
   "min_version": "0.0.0",
-  "url": "https://noisyless.com/firmware/noisyless-v0.0.2.bin",
-  "changelog": "Test OTA : LED bleue 3s au boot pour confirmer la mise à jour",
-  "hash": "sha256:b366af87ffa4e2e2d1c0cd0ecf5a9dd2fe652ab80834df68bc4d1056afb60d5a"
+  "url": "https://raw.githubusercontent.com/mberthod/noisyless/main/ota/noisyless-v0.0.3.bin",
+  "changelog": "Fix double exception crash: mutex pour WiFiClientSecure + heap allocation + errLeds() non-bloquant",
+  "hash": "sha256:d4346d9452dde7186495a99e70b9602fbc6a7a5ad5d1a1d9895527b8c400e268"
 }
