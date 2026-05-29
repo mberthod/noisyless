@@ -1,6 +1,17 @@
-// Firmware Noisyless - ESP32-S3
-// Capteurs: BME680 (I2C), LD2410 (UART)
-// Réseau: WiFi + MQTT (PubSubClient)
+/**
+ * @file main.cpp
+ * @brief Firmware Noisyless pour ESP32-S3 (8 Mo flash)
+ *
+ * Architecture monolithique avec :
+ * - WiFiManager (portail captif) + MQTT (PubSubClient)
+ * - BME680 / BSEC2 (qualité de l'air intérieur)
+ * - LD2410 (radar présence/mouvement UART)
+ * - Capteurs analogiques (luxmètres, microphones)
+ * - Mise à jour OTA via manifest JSON + SHA-256
+ *
+ * @version 0.0.2
+ * @author Noisyless
+ */
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -16,111 +27,157 @@
 #include <Preferences.h>
 
 #include "credentials.h"  // Contient uniquement les secrets MQTT
-// -------------------- Brochage --------------------
-static const int PIN_LUX1_AIN = 1;
-static const int PIN_LUX2_AIN = 2;
-static const int PIN_MIC1 = 3;
-static const int PIN_MIC2 = 4;
-static const int PIN_SYSTEM_POWERED = 5;
-static const int PIN_SW_OPEN = 11;
-static const int PIN_LED_B = 14;  // actif bas (0 = allumé)
-static const int PIN_LED_G = 13;  // actif bas
-static const int PIN_LED_R = 12;  // actif bas
-static const int PIN_LD2410_RX_ESP = 18;  // LD2410 TX → ESP RX
-static const int PIN_LD2410_TX_ESP = 17;  // LD2410 RX → ESP TX
-static const int PIN_OUT_SIGNAL = 21;
-static const int PIN_BME_INT = 34;
-static const int PIN_I2C_SDA = 35;
-static const int PIN_I2C_SCL = 36;
-static const int PIN_BME_MODE = 37;
 
-// -------------------- Configuration Produit --------------------
-static const char* WIFI_SSID = "TP-Link_B150";
-static const char* WIFI_PASS = "12902637";
+/** @name Brochage (Pinout)
+ *  Définitions des broches GPIO de l'ESP32-S3 pour chaque capteur et actionneur */
+/** @{ */
+static const int PIN_LUX1_AIN = 1;         /**< Entrée analogique luxmètre 1 */
+static const int PIN_LUX2_AIN = 2;         /**< Entrée analogique luxmètre 2 */
+static const int PIN_MIC1 = 3;             /**< Entrée analogique microphone 1 */
+static const int PIN_MIC2 = 4;             /**< Entrée analogique microphone 2 */
+static const int PIN_SYSTEM_POWERED = 5;   /**< Indicateur d'alimentation système */
+static const int PIN_SW_OPEN = 11;         /**< Interrupteur d'ouverture boîtier */
+static const int PIN_LED_B = 14;           /**< LED bleue (actif bas : LOW = allumé) */
+static const int PIN_LED_G = 13;           /**< LED verte (actif bas) */
+static const int PIN_LED_R = 12;           /**< LED rouge (actif bas) */
+static const int PIN_LD2410_RX_ESP = 18;   /**< LD2410 TX → ESP RX (UART) */
+static const int PIN_LD2410_TX_ESP = 17;   /**< LD2410 RX → ESP TX (UART) */
+static const int PIN_OUT_SIGNAL = 21;      /**< Sortie signal générale */
+static const int PIN_BME_INT = 34;         /**< Interruption BME680 (utilisé comme sélecteur d'adresse I2C) */
+static const int PIN_I2C_SDA = 35;         /**< Bus I2C SDA */
+static const int PIN_I2C_SCL = 36;         /**< Bus I2C SCL */
+static const int PIN_BME_MODE = 37;        /**< Sélecteur mode BME680 (LOW = 0x76, HIGH = 0x77) */
+/** @} */
 
-// WiFiManager — captive portal pour configuration client
-static WiFiManager wifiManager;
-static Preferences prefs;
-static const char* PREFS_NS = "noisyless";
+/** @name Configuration Produit
+ *  Identifiants, version et credentials WiFi de secours */
+/** @{ */
+static const char* WIFI_SSID = "TP-Link_B150";   /**< SSID WiFi de secours (fallback) */
+static const char* WIFI_PASS = "12902637";        /**< Mot de passe WiFi de secours */
 
-static const char* PRODUCT = "noisyless_env";
-static const char* CLIENT_CODE = "client_demo";
-static char DEVICE_ID[20] = {0};  // NL-XXXXXXXXXXXX (base MAC, generé au boot)
-static char CLIENT_ID[32] = {0};   // noisyless_<device_id>
-static const char* FW_VERSION = "0.0.1";
+/** WiFiManager — portail captif pour configuration client */
+static WiFiManager wifiManager;                   /**< Instance du gestionnaire WiFi avec portail captif */
+static Preferences prefs;                         /**< Stockage persistant NVS */
+static const char* PREFS_NS = "noisyless";        /**< Namespace NVS pour les credentials WiFi */
 
-static const unsigned long PUBLISH_INTERVAL_MS = 10000UL;  // 10s
-static const unsigned long SENSOR_ADC_WINDOW_MS = 50UL;
-static const unsigned long RADAR_READ_PERIOD_MS = 100UL;
-static const unsigned long OTA_CHECK_INTERVAL_MS = 3600000UL; // 1h
-// Manifest OTA (canal: stable)
-static const char* OTA_MANIFEST_URL = "https://noisyless.com/firmware/stable.json";
-static const char* OTA_USER_AGENT = "Noisyless-ESP32";
+static const char* PRODUCT = "noisyless_env";     /**< Identifiant produit pour les messages MQTT */
+static const char* CLIENT_CODE = "client_demo";   /**< Code client pour les messages MQTT */
+static char DEVICE_ID[20] = {0};                  /**< Identifiant unique : NL-XXXXXXXXXXXX (basé sur MAC, généré au boot) */
+static char CLIENT_ID[32] = {0};                  /**< Identifiant MQTT : noisyless_<device_id> */
+static const char* FW_VERSION = "0.0.2";          /**< Version actuelle du firmware (SemVer) */
+/** @} */
 
-// -------------------- Objets globaux --------------------
-WiFiClient espClient;
-PubSubClient mqtt(espClient);
+/** @name Constantes temporelles
+ *  Intervalles de publication, d'échantillonnage et de vérification OTA */
+/** @{ */
+static const unsigned long PUBLISH_INTERVAL_MS = 10000UL;   /**< Intervalle de publication MQTT : 10 secondes */
+static const unsigned long SENSOR_ADC_WINDOW_MS = 50UL;     /**< Fenêtre d'échantillonnage ADC (microphones) : 50 ms */
+static const unsigned long RADAR_READ_PERIOD_MS = 100UL;    /**< Période de lecture du radar LD2410 : 100 ms */
+static const unsigned long OTA_CHECK_INTERVAL_MS = 3600000UL; /**< Intervalle de vérification OTA : 1 heure */
+/** @} */
 
-ld2410 radar;                   // Capteur LD2410
-HardwareSerial& RadarSerial = Serial1;
+/** @name Configuration OTA
+ *  Manifeste et paramètres de mise à jour à distance */
+/** @{ */
+static const char* OTA_MANIFEST_URL = "https://noisyless.com/firmware/stable.json"; /**< URL du manifeste OTA (canal stable) */
+static const char* OTA_USER_AGENT = "Noisyless-ESP32"; /**< User-Agent pour les requêtes HTTP OTA */
+/** @} */
+
+/** @name Objets globaux
+ *  Instances des bibliothèques et objets partagés entre les tâches */
+/** @{ */
+WiFiClient espClient;          /**< Client WiFi pour la connexion MQTT */
+PubSubClient mqtt(espClient);  /**< Client MQTT basé sur espClient */
+
+ld2410 radar;                   /**< Capteur LD2410 (radar présence/mouvement) */
+HardwareSerial& RadarSerial = Serial1; /**< Port série UART dédié au radar */
+/** @} */
 
 
-#define ERROR_DUR 1000
+#define ERROR_DUR 1000   /**< Durée d'affichage de l'erreur LED (ms), non utilisée directement */
 
-#define SAMPLE_RATE BSEC_SAMPLE_RATE_ULP
+#define SAMPLE_RATE BSEC_SAMPLE_RATE_ULP /**< Taux d'échantillonnage BSEC2 : Ultra Low Power */
 
 
-static bool g_bsec_ok = false;
-static bool g_ld_ok = false;
-static unsigned long g_lastBsecInitAttemptMs = 0;
-static unsigned long g_lastPublishMs = 0;
-static char g_mqttTopic[128] = {0};
-static char g_mqttTopicLine[128] = {0};
-static char g_macStr[20] = {0};
-void newDataCallback(const bme68xData data, const bsecOutputs outputs, Bsec2 bsec);
+/** @name Indicateurs et variables globales
+ *  Drapeaux d'état, tampons et mutex pour la synchronisation inter-tâches */
+/** @{ */
+static bool g_bsec_ok = false;                    /**< Drapeau : initialisation BSEC2 réussie */
+static bool g_ld_ok = false;                      /**< Drapeau : initialisation LD2410 réussie */
+static unsigned long g_lastBsecInitAttemptMs = 0; /**< Dernière tentative d'initialisation BSEC2 (ms) */
+static unsigned long g_lastPublishMs = 0;         /**< Dernière publication MQTT (ms) */
+static char g_mqttTopic[128] = {0};               /**< Topic MQTT pour les données JSON */
+static char g_mqttTopicLine[128] = {0};           /**< Topic MQTT pour le format ligne (InfluxDB) */
+static char g_macStr[20] = {0};                   /**< Chaîne MAC (12 caractères hexadécimaux) */
+void newDataCallback(const bme68xData data, const bsecOutputs outputs, Bsec2 bsec); /**< Forward declaration du callback BSEC */
+/** @} */
 
 /* Create an object of the class Bsec2 */
-Bsec2 envSensor;
+Bsec2 envSensor; /**< Instance du capteur environnemental BME680 via l'API BSEC2 */
 
-// Dernières valeurs BSEC pour alimentation du JSON
+/**
+ * @brief Dernières valeurs BSEC pour alimentation du JSON
+ *
+ * Structure volatile contenant toutes les sorties du capteur BME680
+ * traitées par l'algorithme BSEC2. Mise à jour par le callback
+ * newDataCallback() et lue par publishMeasurements().
+ */
 struct BsecLastValues {
-  bool valid = false;
-  float temp_comp_c = 0.0f;
-  float hum_comp_pct = 0.0f;
-  uint32_t pressure_pa = 0;
-  uint32_t gas_ohms = 0;
-  float raw_temp_c = 0.0f;
-  float raw_hum_pct = 0.0f;
-  uint32_t raw_gas_ohms = 0;
-  float iaq = 0.0f;
-  float s_iaq = 0.0f;
-  float co2eq_ppm = 0.0f;
-  float bvoc_eq_ppm = 0.0f;
-  float gas_pct = 0.0f;
-  uint8_t iaq_accuracy = 0;
-  uint8_t stab_status = 0;
-  uint8_t run_in_status = 0;
+  bool valid = false;           /**< Drapeau : les données BSEC sont valides et à jour */
+  float temp_comp_c = 0.0f;    /**< Température compensée (°C) */
+  float hum_comp_pct = 0.0f;   /**< Humidité relative compensée (%) */
+  uint32_t pressure_pa = 0;    /**< Pression atmosphérique (Pa) */
+  uint32_t gas_ohms = 0;       /**< Résistance du gaz capteur compensée (Ω) */
+  float raw_temp_c = 0.0f;     /**< Température brute avant compensation (°C) */
+  float raw_hum_pct = 0.0f;    /**< Humidité brute avant compensation (%) */
+  uint32_t raw_gas_ohms = 0;   /**< Résistance du gaz brute (Ω) */
+  float iaq = 0.0f;            /**< Indice de Qualité de l'Air Intérieur (IAQ) */
+  float s_iaq = 0.0f;          /**< Indice IAQ statique (s_IAQ) */
+  float co2eq_ppm = 0.0f;      /**< Concentration CO2 estimée (ppm) */
+  float bvoc_eq_ppm = 0.0f;    /**< Concentration équivalente COV respiratoires (ppm) */
+  float gas_pct = 0.0f;        /**< Pourcentage de gaz (%) */
+  uint8_t iaq_accuracy = 0;    /**< Précision de l'IAQ (0 = non stabilisé, 3 = haute précision) */
+  uint8_t stab_status = 0;     /**< Statut de stabilisation */
+  uint8_t run_in_status = 0;   /**< Statut de rodage (run-in) */
 };
-static volatile BsecLastValues g_bsec_last;
+static volatile BsecLastValues g_bsec_last; /**< Dernières valeurs BSEC, volatiles car modifiées depuis le callback */
 
-// Données partagées (protégées par mutex)
+/**
+ * @brief Données partagées entre tâches (protégées par mutex)
+ *
+ * Structure contenant l'état complet des capteurs, lue par la tâche
+ * MQTT pour la publication JSON. La synchronisation est assurée par
+ * le sémaphore g_sharedMutex.
+ */
 struct SharedMeasurements {
-  BsecLastValues bsec;
-  bool presence = false;
-  uint16_t distance_cm = 0;
-  uint16_t lux1_raw = 0;
-  uint16_t lux2_raw = 0;
-  uint16_t mic1_pp = 0;
-  uint16_t mic2_pp = 0;
+  BsecLastValues bsec;      /**< Mesures environnementales BSEC2 */
+  bool presence = false;    /**< Présence détectée par le radar LD2410 */
+  uint16_t distance_cm = 0; /**< Distance de la cible détectée (cm) */
+  uint16_t lux1_raw = 0;    /**< Valeur brute luxmètre 1 (ADC 0-4095) */
+  uint16_t lux2_raw = 0;    /**< Valeur brute luxmètre 2 (ADC 0-4095) */
+  uint16_t mic1_pp = 0;     /**< Amplitude pic-à-pic microphone 1 (ADC) */
+  uint16_t mic2_pp = 0;     /**< Amplitude pic-à-pic microphone 2 (ADC) */
 };
-static SharedMeasurements g_shared{};
-static SemaphoreHandle_t g_sharedMutex = nullptr;
-static SemaphoreHandle_t g_otaMutex = nullptr;  // ProtègeOTA check/flash
-static bool g_otaRunning = false;                // Drapeau: OTA en cours
+static SharedMeasurements g_shared{};                     /**< Instance globale des mesures partagées */
+static SemaphoreHandle_t g_sharedMutex = nullptr;         /**< Mutex protégeant l'accès aux mesures partagées */
+static SemaphoreHandle_t g_otaMutex = nullptr;            /**< Mutex protégeant les opérations OTA */
+static bool g_otaRunning = false;                         /**< Drapeau : une mise à jour OTA est en cours */
+/** @} */
 
 
-// ------------------------------------------------
-// Traduction des codes d'erreur MQTT
+/** @name Fonctions utilitaires
+ *  Fonctions de traduction d'erreurs et d'indication visuelle */
+/** @{ */
+
+/**
+ * @brief Traduit un code d'erreur MQTT en chaîne lisible
+ *
+ * Convertit le code retourné par PubSubClient::state() en une chaîne
+ * descriptive pour le débogage série.
+ *
+ * @param code Code d'état MQTT (de -4 à 5)
+ * @return const char* Chaîne descriptive du code d'erreur
+ */
 static const char* mqttError(int8_t code) {
   switch (code) {
     case -4: return "MQTT_CONNECTION_TIMEOUT";
@@ -137,6 +194,12 @@ static const char* mqttError(int8_t code) {
   return "UNKNOWN";
 }
 
+/**
+ * @brief Clignotement LED rouge pour signaler une erreur
+ *
+ * Allume la LED rouge pendant 100 ms puis l'éteint. Utilisé par
+ * checkBsecStatus() pour signaler les erreurs BSEC/BME68X.
+ */
 void errLeds(void)
 {
   digitalWrite(PIN_LED_R, HIGH);
@@ -144,7 +207,22 @@ void errLeds(void)
   digitalWrite(PIN_LED_R, LOW);
   delay(100);
 }
+/** @} */
 
+
+/** @name Fonctions BSEC2
+ *  Vérification d'état et callback de réception des données BSEC */
+/** @{ */
+
+/**
+ * @brief Vérifie et affiche les codes d'état/erreur BSEC2 et BME68X
+ *
+ * Analyse les champs status de l'objet Bsec2 et de son capteur BME68X.
+ * En cas d'erreur, appelle errLeds() pour le signaler visuellement.
+ * Les avertissements sont simplement logués sur la console série.
+ *
+ * @param bsec Référence à l'objet Bsec2 dont on vérifie le statut
+ */
 void checkBsecStatus(Bsec2 bsec)
 {
   if (bsec.status < BSEC_OK)
@@ -167,163 +245,19 @@ void checkBsecStatus(Bsec2 bsec)
     Serial.println("BME68X warning code : " + String(bsec.sensor.status));
   }
 }
-// ------------------------------------------------
-// Connexion au WiFi avec WiFiManager + captive portal
-// Premier boot : captive portal "NOISYLESS-Setup"
-// Boots suivants : auto-connect via NVS
-void connectWiFi() {
-  if (WiFi.status() == WL_CONNECTED) return;
 
-  // LED rouge pendant connexion
-  digitalWrite(PIN_LED_R, LOW);   // allumé (actif bas)
-  digitalWrite(PIN_LED_G, HIGH);
-  digitalWrite(PIN_LED_B, HIGH);
-
-  prefs.begin(PREFS_NS, false);
-  String savedSSID = prefs.getString("ssid", "");
-  String savedPass = prefs.getString("pass", "");
-
-  if (savedSSID.length() > 0) {
-    // Credentials déjà sauvegardés → auto-connect
-    Serial.printf("[WiFi] Auto-connect to saved AP \"%s\"\n", savedSSID.c_str());
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(savedSSID.c_str(), savedPass.c_str());
-
-    int dots = 0;
-    while (WiFi.status() != WL_CONNECTED && dots < 30) { // timeout 15s
-      delay(500);
-      Serial.print(".");
-      dots++;
-    }
-    if (WiFi.status() == WL_CONNECTED) {
-      digitalWrite(PIN_LED_R, HIGH); // LED éteinte
-      Serial.println("\n[WiFi] Connected to saved AP");
-      prefs.end();
-      return;
-    }
-    // Échec auto-connect → fallback captive portal
-    Serial.println("\n[WiFi] Saved AP failed, starting captive portal...");
-  }
-
-  // Captive portal "NOISYLESS-Setup"
-  wifiManager.setTitle("NOISYLESS");
-  wifiManager.setConfigPortalTimeout(15); // 15s → fallback rapide TP-Link_B150
-  wifiManager.setCustomHeadElement(PROGMEM R"rawliteral(
-<style>
-  *, *::before, *::after { box-sizing: border-box; }
-  body {
-    font-family: 'IBM Plex Sans', -apple-system, sans-serif !important;
-    background: #ffffff !important;
-    color: #1a1a1a !important;
-    margin: 0; padding: 24px;
-    display: flex; flex-direction: column; align-items: center;
-    justify-content: center; min-height: 100vh;
-  }
-  .card { 
-    max-width: 420px; width: 100%;
-    background: #fff; border: 1px solid #e0e0e0;
-    border-radius: 12px; padding: 32px 24px;
-  }
-  h2, h1 { font-family: 'Space Mono', monospace !important; 
-    font-size: 16px !important; font-weight: 700 !important;
-    text-align: center; text-transform: uppercase; letter-spacing: 1px; }
-  h1 {
-    font-family: 'Space Mono', monospace !important;
-    font-size: 22px !important; letter-spacing: 2px;
-    text-transform: uppercase; color: #1a1a1a;
-    margin-bottom: 8px;
-  }
-  p { font-size: 14px; color: #666; text-align: center; margin-bottom: 24px; }
-  label { display: block; font-size: 12px; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 6px; }
-  input[type="text"], input[type="password"] {
-    width: 100%; padding: 14px 16px; border: 1px solid #d0d0d0;
-    border-radius: 8px; font-size: 15px; color: #1a1a1a;
-    background: #fafafa; transition: border-color 0.2s;
-  }
-  input:focus { outline: none; border-color: #1a1a1a; background: #fff; }
-  button, input[type="submit"] {
-    width: 100%; padding: 14px; background: #1a1a1a; color: #fff;
-    border: none; border-radius: 8px; font-family: 'Space Mono', monospace;
-    font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
-    cursor: pointer; margin-top: 12px;
-  }
-  button:hover, input[type="submit"]:hover { background: #333; }
-  .msg { margin-top: 16px; padding: 12px; border-radius: 8px; font-size: 13px; text-align: center; }
-  .msg.ok { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
-  .msg.err { background: #fbe9e7; color: #c62828; border: 1px solid #ffccbc; }
-  a { color: #666; }
-  .logo {
-    font-family: 'Space Mono', monospace; font-size: 22px;
-    font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
-    text-align: center; margin-bottom: 8px; color: #1a1a1a;
-  }
-</style>
-<div class="logo">NOISYLESS</div>
-<p>Connectez votre capteur au WiFi</p>
-<div class="card">
-)rawliteral");
-  wifiManager.setAPCallback([](WiFiManager* mgr) {
-    Serial.println("[WiFiManager] Captive portal ACTIVE — connect to 'NOISYLESS-Setup'");
-    // LED bleue = captive portal actif
-    digitalWrite(PIN_LED_R, HIGH);
-    digitalWrite(PIN_LED_G, HIGH);
-    digitalWrite(PIN_LED_B, LOW);  // allumé (actif bas)
-  });
-
-  Serial.println("[WiFi] Starting captive portal...");
-  if (wifiManager.autoConnect("NOISYLESS-Setup")) {
-    // Connexion réussie → sauvegarder en NVS
-    String newSSID = wifiManager.getWiFiSSID();
-    String newPass = wifiManager.getWiFiPass();
-    if (newSSID.length() > 0) {
-      prefs.putString("ssid", newSSID);
-      prefs.putString("pass", newPass);
-      Serial.printf("[WiFi] Saved credentials for \"%s\" to NVS\n", newSSID.c_str());
-    }
-    digitalWrite(PIN_LED_R, HIGH);
-    digitalWrite(PIN_LED_B, HIGH);
-    Serial.println("\n[WiFi] Connected via captive portal");
-  } else {
-    // Timeout portal → fallback hardcoded
-    Serial.println("[WiFi] Captive portal timeout, using hardcoded fallback");
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(WIFI_SSID, WIFI_PASS);
-    int dots = 0;
-    while (WiFi.status() != WL_CONNECTED && dots < 40) {
-      delay(500);
-      Serial.print(".");
-      dots++;
-    }
-  }
-  prefs.end();
-
-  digitalWrite(PIN_LED_R, HIGH);
-  digitalWrite(PIN_LED_B, HIGH);
-  Serial.println("\n[WiFi] Connected");
-  Serial.printf("[WiFi] IP  : %s\n", WiFi.localIP().toString().c_str());
-  Serial.printf("[WiFi] RSSI: %d dBm\n", WiFi.RSSI());
-}
-
-// ------------------------------------------------
-// Connexion au broker MQTT, avec logs d'erreur
-void connectMQTT() {
-  if (mqtt.connected()) return;
-
-  mqtt.setServer(MQTT_HOST, MQTT_PORT);
-  Serial.printf("\n[MQTT] Connexion à %s:%u ...\n", MQTT_HOST, MQTT_PORT);
-  Serial.printf("[MQTT] ClientID : %s\n", CLIENT_ID);
-  Serial.printf("[MQTT] User     : %s\n", MQTT_USER);
-
-  if (mqtt.connect(CLIENT_ID, MQTT_USER, MQTT_PASS)) {
-    Serial.println("[MQTT] Connecté");
-  } else {
-    Serial.printf("[MQTT] Échec rc=%d (%s)\n", mqtt.state(), mqttError(mqtt.state()));
-  }
-}
-
-
-
+/**
+ * @brief Callback de réception des données BSEC2
+ *
+ * Invoqué automatiquement par l'API BSEC2 à chaque nouveau cycle
+ * d'acquisition. Parse l'ensemble des sorties configurées (IAQ,
+ * température, humidité, pression, gaz, etc.) et remplit la
+ * structure globale g_bsec_last.
+ *
+ * @param data Données brutes du capteur BME68X
+ * @param outputs Sorties traitées par l'algorithme BSEC
+ * @param bsec Référence à l'objet Bsec2 appelant
+ */
 void newDataCallback(const bme68xData data, const bsecOutputs outputs, Bsec2 bsec)
 {
   if (!outputs.nOutputs)
@@ -402,12 +336,29 @@ void newDataCallback(const bme68xData data, const bsecOutputs outputs, Bsec2 bse
   }
   g_bsec_last.valid = true;
 }
-// ------------------------------------------------
-// Initialisation BSEC2 (scan @0x76 puis @0x77) - échantillonnage Low Power
+/** @} */
+
+
+/** @name Initialisation BSEC2
+ *  Configuration du capteur BME680 via l'API BSEC2 */
+/** @{ */
+
+/**
+ * @brief Initialise le capteur BME680 via l'API BSEC2
+ *
+ * Configure le bus I2C, pilote le sélecteur d'adresse (PIN_BME_MODE),
+ * tente l'initialisation du capteur à l'adresse 0x76, abonne les
+ * sorties BSEC2 souhaitées et attache le callback de réception des
+ * données. Fonctionne en mode Ultra Low Power (ULP).
+ *
+ * @return true si l'initialisation a réussi, false en cas d'échec
+ *         (capteur absent ou erreur I2C)
+ */
 bool initBSEC() {
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
 
-  // Pilote le sélecteur d'adresse si câblé (LOW=0x76, HIGH=0x77)
+  // Pilote le sélecteur d'adresse (LOW=0x76, HIGH=0x77)
+  // On essaie d'abord LOW (0x76), puis HIGH (0x77) si le scan I2C échoue
   pinMode(PIN_BME_INT, OUTPUT);
   digitalWrite(PIN_BME_INT, HIGH);
 
@@ -415,7 +366,33 @@ bool initBSEC() {
   digitalWrite(PIN_BME_MODE, LOW);
   delay(5);
 
-  
+  // Déterminer l'adresse I2C du BME688 par scan matériel
+  uint8_t bmeAddr = 0;
+  const uint8_t addrCandidates[2] = {BME68X_I2C_ADDR_LOW, BME68X_I2C_ADDR_HIGH};
+  const int modePins[2] = {LOW, HIGH};
+
+  for (int attempt = 0; attempt < 2; attempt++) {
+    // Piloter la broche de sélection d'adresse
+    digitalWrite(PIN_BME_MODE, modePins[attempt]);
+    delay(5);
+
+    // Scanner l'adresse candidate sur le bus I2C
+    Wire.beginTransmission(addrCandidates[attempt]);
+    if (Wire.endTransmission() == 0) {
+      bmeAddr = addrCandidates[attempt];
+      Serial.printf("[BSEC2] BME688 détecté à 0x%02X (PIN_BME_MODE=%s)\n",
+                    bmeAddr, modePins[attempt] == HIGH ? "HIGH" : "LOW");
+      break;
+    }
+    Serial.printf("[BSEC2] Aucun capteur à 0x%02X (PIN_BME_MODE=%s), tentative suivante...\n",
+                  addrCandidates[attempt], modePins[attempt] == HIGH ? "HIGH" : "LOW");
+  }
+
+  if (bmeAddr == 0) {
+    Serial.println("[BSEC2] Aucun capteur BME688 trouvé sur le bus I2C — mode dégradé");
+    return false;
+  }
+
   bsecSensor sensorList[] = {
     BSEC_OUTPUT_IAQ,
     BSEC_OUTPUT_RAW_TEMPERATURE,
@@ -433,7 +410,7 @@ bool initBSEC() {
     BSEC_OUTPUT_COMPENSATED_GAS};
 
   /* Initialize the library and interfaces */
-  if (!envSensor.begin(BME68X_I2C_ADDR_LOW, Wire))
+  if (!envSensor.begin(bmeAddr, Wire))
   {
     checkBsecStatus(envSensor);
     Serial.println("[BSEC2] Échec begin() — capteur BME680 absent ou I2C error, utilisation mode dégradé");
@@ -468,9 +445,22 @@ bool initBSEC() {
                  String(envSensor.version.major) + "." + String(envSensor.version.minor) + "." + String(envSensor.version.major_bugfix) + "." + String(envSensor.version.minor_bugfix));
   return true;
 }
+/** @} */
 
-// ------------------------------------------------
-// Initialisation du LD2410 - parser custom (lib bypass)
+
+/** @name Initialisation LD2410
+ *  Configuration du radar UART LD2410 */
+/** @{ */
+
+/**
+ * @brief Initialise la communication UART avec le capteur LD2410
+ *
+ * Configure le port série matériel Serial1 à 256000 bauds pour
+ * communiquer avec le radar LD2410. Utilise un parseur de trames
+ * personnalisé (pas la bibliothèque ld2410 standard).
+ *
+ * @return true toujours (le parseur fonctionne indépendamment de l'état du capteur)
+ */
 bool initLD2410() {
   static bool serial_started = false;
   if (!serial_started) {
@@ -480,22 +470,39 @@ bool initLD2410() {
   }
   return true; // Toujours OK, on parse directement les frames
 }
+/** @} */
 
-// Parser custom LD2410 - lit les frames F4F3F2F1...F8F7F6F5
-// Frame target data (cyclic mode):
-//   F4 F3 F2 F1 | LL LL | 02 AA | STATE | MD_L MD_H | ME | SD_L SD_H | SE | DD_L DD_H | 55 | CK | F8 F7 F6 F5
-// STATE: 0=none, 1=moving, 2=stationary, 3=both
+
+/** @name Parseur LD2410
+ *  Analyse des trames radar en mode cyclique */
+/** @{ */
+
+/**
+ * @brief Structure interne des données parsées du LD2410
+ *
+ * Frame target data (mode cyclique) :
+ *   F4 F3 F2 F1 | LL LL | 02 AA | STATE | MD_L MD_H | ME | SD_L SD_H | SE | DD_L DD_H | 55 | CK | F8 F7 F6 F5
+ * STATE : 0 = aucune présence, 1 = mouvement, 2 = stationnaire, 3 = les deux
+ */
 static struct {
-  bool valid;
-  uint8_t state;
-  uint16_t moving_dist_cm;
-  uint8_t moving_energy;
-  uint16_t still_dist_cm;
-  uint8_t still_energy;
-  uint16_t detection_dist_cm;
-  unsigned long last_update_ms;
+  bool valid;                     /**< Drapeau : dernière trame valide reçue */
+  uint8_t state;                  /**< État de présence (0-3 : none/moving/stationary/both) */
+  uint16_t moving_dist_cm;       /**< Distance de la cible en mouvement (cm) */
+  uint8_t moving_energy;          /**< Énergie de la cible en mouvement */
+  uint16_t still_dist_cm;        /**< Distance de la cible stationnaire (cm) */
+  uint8_t still_energy;           /**< Énergie de la cible stationnaire */
+  uint16_t detection_dist_cm;    /**< Distance de détection maximale (cm) */
+  unsigned long last_update_ms;   /**< Horodatage de la dernière mise à jour (ms) */
 } g_ld_data = {};
 
+/**
+ * @brief Parse le flux UART du radar LD2410 en temps réel
+ *
+ * Analyse les trames binaires au format propriétaire LD2410
+ * (délimiteurs F4F3F2F1 / F8F7F6F5). Extrait l'état de présence,
+ * les distances et énergies des cibles. Fonctionne en mode non
+ * bloquant (appelée à chaque itération de la tâche radar).
+ */
 void parseLD2410Stream() {
   static uint8_t buf[64];
   static size_t pos = 0;
@@ -540,10 +547,25 @@ void parseLD2410Stream() {
     pos = (pos > total) ? pos - total : 0;
   }
 }
+/** @} */
 
 
-// ------------------------------------------------
-// Lecture LD2410 via parser custom. presence=true si mouvement ou stationnaire.
+/** @name Fonctions de lecture des capteurs
+ *  Radar, luminosité et microphones */
+/** @{ */
+
+/**
+ * @brief Lit l'état de présence et la distance depuis le radar LD2410
+ *
+ * Appelle parseLD2410Stream() puis analyse les données parsées.
+ * Si aucune trame reçue depuis plus de 2 secondes, le capteur est
+ * considéré hors ligne. La distance retournée priorise la cible en
+ * mouvement, puis la cible stationnaire, puis la détection maximale.
+ *
+ * @param[out] presence Référence booléenne : true si présence détectée
+ * @param[out] distance_cm Référence distance de la cible en cm
+ * @return true si les données radar sont valides, false si offline
+ */
 bool readLD2410(bool& presence, uint16_t& distance_cm) {
   parseLD2410Stream();
 
@@ -568,16 +590,34 @@ bool readLD2410(bool& presence, uint16_t& distance_cm) {
   return true;
 }
 
-// ------------------------------------------------
-// Lecture luminosité (deux entrées analogiques). Retourne toujours true.
+/**
+ * @brief Lit les deux entrées analogiques de luminosité
+ *
+ * Effectue une lecture analogique simple sur les deux canaux
+ * luxmètres. Les valeurs brutes (0-4095 pour ESP32-S3 sur 12 bits)
+ * sont retournées par référence.
+ *
+ * @param[out] lux1_raw Valeur ADC brute du luxmètre 1
+ * @param[out] lux2_raw Valeur ADC brute du luxmètre 2
+ * @return true toujours
+ */
 bool readLightSensors(uint16_t& lux1_raw, uint16_t& lux2_raw) {
   lux1_raw = analogRead(PIN_LUX1_AIN);
   lux2_raw = analogRead(PIN_LUX2_AIN);
   return true;
 }
 
-// ------------------------------------------------
-// Mesure simple du niveau sonore par pic-à-pic (P2P) sur ~50 ms
+/**
+ * @brief Mesure le niveau sonore par amplitude pic-à-pic
+ *
+ * Échantillonne les deux microphones analogiques pendant une fenêtre
+ * de ~50 ms et calcule l'amplitude crête-à-crête (max - min) pour
+ * chaque canal comme indicateur du niveau sonore.
+ *
+ * @param[out] mic1_pp Amplitude pic-à-pic du microphone 1
+ * @param[out] mic2_pp Amplitude pic-à-pic du microphone 2
+ * @return true toujours
+ */
 bool readMicrophones(uint16_t& mic1_pp, uint16_t& mic2_pp) {
   const uint32_t windowMs = 50;
   uint32_t t0 = millis();
@@ -599,12 +639,25 @@ bool readMicrophones(uint16_t& mic1_pp, uint16_t& mic2_pp) {
   mic2_pp = (max2 > min2) ? (max2 - min2) : 0;
   return true;
 }
+/** @} */
 
-// ------------------------------------------------
-// Construit et publie le JSON de mesures sur MQTT
-// ------------------------------------------------
-// Construit et publie le JSON de mesures sur MQTT (format unique JSON)
-// ------------------------------------------------
+
+/** @name Publieur MQTT
+ *  Construction et envoi des données au format JSON */
+/** @{ */
+
+/**
+ * @brief Construit et publie le JSON de mesures sur MQTT
+ *
+ * Rassemble les données BSEC2 (température, humidité, pression, IAQ,
+ * CO2, COV, gaz), radar (présence, distance), ADC (luxmètres,
+ * microphones) et système (RSSI, uptime, timestamp) dans un unique
+ * payload JSON. Publie sur le topic MQTT dédié.
+ *
+ * Le format JSON est conçu pour Telegraf (data_format = "json").
+ * Les données partagées sont lues sous protection du mutex
+ * g_sharedMutex.
+ */
 void publishMeasurements() {
   float temperature_c = 0.0f;
   float humidity_pct = 0.0f;
@@ -749,9 +802,25 @@ void publishMeasurements() {
   bool ok = mqtt.publish(g_mqttTopic, payload);
   Serial.printf("[PUB] Publish OK ? %s\n", ok ? "YES" : "NO");
 }
+/** @} */
 
-// ------------------------------------------------
-// Helpers OTA: parsing simple JSON manifest, SemVer, SHA256 et Update
+
+/** @name Fonctions OTA
+ *  Vérification et mise à jour du firmware à distance */
+/** @{ */
+
+/**
+ * @brief Extrait une valeur String d'un JSON simple (sans bibliothèque)
+ *
+ * Recherche une clé au format "key":"value" dans une chaîne JSON
+ * et retourne la valeur associée. Fonctionne sans dépendance à
+ * ArduinoJson, adaptée aux manifestes OTA simples.
+ *
+ * @param json Chaîne JSON complète
+ * @param key Nom de la clé à extraire (sans guillemets)
+ * @param[out] out Référence String recevant la valeur
+ * @return true si la clé a été trouvée et extraite, false sinon
+ */
 static bool jsonExtractString(const String& json, const char* key, String& out) {
   String pat = String("\"") + key + "\":";
   int i = json.indexOf(pat);
@@ -767,6 +836,18 @@ static bool jsonExtractString(const String& json, const char* key, String& out) 
   return true;
 }
 
+/**
+ * @brief Parse une chaîne de version SemVer (major.minor.patch)
+ *
+ * Extrait les trois composantes numériques d'une chaîne de version
+ * au format SemVer. Gère les suffixes (beta, dev) en les ignorant.
+ * Exemple : "1.2.3-beta" → major=1, minor=2, patch=3.
+ *
+ * @param v Chaîne de version à parser
+ * @param[out] major Composante majeure
+ * @param[out] minor Composante mineure
+ * @param[out] patch Composante de correctif
+ */
 static void parseSemVer(const String& v, int& major, int& minor, int& patch) {
   major = minor = patch = 0;
   int p1 = v.indexOf('.');
@@ -783,6 +864,17 @@ static void parseSemVer(const String& v, int& major, int& minor, int& patch) {
   patch = sPat.toInt();
 }
 
+/**
+ * @brief Compare deux chaînes de version SemVer
+ *
+ * Compare a et b composante par composante (major, minor, patch).
+ * Utilisé pour déterminer si le firmware local est à jour ou
+ * nécessite une mise à jour OTA.
+ *
+ * @param a Première version
+ * @param b Seconde version
+ * @return -1 si a < b, 0 si a == b, 1 si a > b
+ */
 static int compareSemVer(const String& a, const String& b) {
   int av1, av2, av3, bv1, bv2, bv3;
   parseSemVer(a, av1, av2, av3);
@@ -793,6 +885,16 @@ static int compareSemVer(const String& a, const String& b) {
   return 0;
 }
 
+/**
+ * @brief Convertit un tableau d'octets en chaîne hexadécimale
+ *
+ * Utilisé pour afficher l'empreinte SHA-256 du firmware téléchargé
+ * et la comparer à celle attendue dans le manifeste OTA.
+ *
+ * @param buf Tableau d'octets
+ * @param len Nombre d'octets
+ * @return String Chaîne hexadécimale (minuscules)
+ */
 static String toHex(const uint8_t* buf, size_t len) {
   static const char* HEXCHARS = "0123456789abcdef";
   String s; s.reserve(len * 2);
@@ -803,6 +905,15 @@ static String toHex(const uint8_t* buf, size_t len) {
   return s;
 }
 
+/**
+ * @brief Vérifie le manifeste OTA et déclenche la mise à jour si nécessaire
+ *
+ * Télécharge le manifeste JSON depuis le serveur Noisyless, compare
+ * les versions, et si une mise à jour est disponible, télécharge le
+ * binaire, vérifie son empreinte SHA-256 et applique la mise à jour
+ * via la bibliothèque Update d'ESP32. Protégé par mutex pour éviter
+ * les appels concurrents.
+ */
 void checkOtaManifestAndUpdate() {
   // Mutex pour éviter deux OTA simultanées (WiFiClientSecure n'est pas thread-safe)
   if (g_otaMutex == nullptr) return;
@@ -969,10 +1080,201 @@ ota_cleanup:
   g_otaRunning = false;
   xSemaphoreGive(g_otaMutex);
 }
+/** @} */
 
 
-// ------------------------------------------------
-// Setup principal
+/** @name Fonctions Réseau
+ *  Connexion WiFi (portail captif) et MQTT */
+/** @{ */
+
+/**
+ * @brief Connexion au WiFi avec WiFiManager + portail captif
+ *
+ * Stratégie de connexion à trois niveaux :
+ * 1. Credentials sauvegardés en NVS → auto-connect
+ * 2. Échec → portail captif "NOISYLESS-Setup" (15s timeout)
+ * 3. Timeout du portail → fallback vers les credentials hardcodés (TP-Link_B150)
+ * Les credentials saisis via le portail sont persistés en NVS pour les boots suivants.
+ */
+void connectWiFi() {
+  if (WiFi.status() == WL_CONNECTED) return;
+
+  // LED rouge pendant connexion
+  digitalWrite(PIN_LED_R, LOW);   // allumé (actif bas)
+  digitalWrite(PIN_LED_G, HIGH);
+  digitalWrite(PIN_LED_B, HIGH);
+
+  prefs.begin(PREFS_NS, false);
+  String savedSSID = prefs.getString("ssid", "");
+  String savedPass = prefs.getString("pass", "");
+
+  if (savedSSID.length() > 0) {
+    // Credentials déjà sauvegardés → auto-connect
+    Serial.printf("[WiFi] Auto-connect to saved AP \"%s\"\n", savedSSID.c_str());
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(savedSSID.c_str(), savedPass.c_str());
+
+    int dots = 0;
+    while (WiFi.status() != WL_CONNECTED && dots < 30) { // timeout 15s
+      delay(500);
+      Serial.print(".");
+      dots++;
+    }
+    if (WiFi.status() == WL_CONNECTED) {
+      digitalWrite(PIN_LED_R, HIGH); // LED éteinte
+      Serial.println("\n[WiFi] Connected to saved AP");
+      prefs.end();
+      return;
+    }
+    // Échec auto-connect → fallback captive portal
+    Serial.println("\n[WiFi] Saved AP failed, starting captive portal...");
+  }
+
+  // Captive portal "NOISYLESS-Setup"
+  wifiManager.setTitle("NOISYLESS");
+  wifiManager.setConfigPortalTimeout(15); // 15s → fallback rapide TP-Link_B150
+  wifiManager.setCustomHeadElement(PROGMEM R"rawliteral(
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    font-family: 'IBM Plex Sans', -apple-system, sans-serif !important;
+    background: #ffffff !important;
+    color: #1a1a1a !important;
+    margin: 0; padding: 24px;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; min-height: 100vh;
+  }
+  .card { 
+    max-width: 420px; width: 100%;
+    background: #fff; border: 1px solid #e0e0e0;
+    border-radius: 12px; padding: 32px 24px;
+  }
+  h2, h1 { font-family: 'Space Mono', monospace !important; 
+    font-size: 16px !important; font-weight: 700 !important;
+    text-align: center; text-transform: uppercase; letter-spacing: 1px; }
+  h1 {
+    font-family: 'Space Mono', monospace !important;
+    font-size: 22px !important; letter-spacing: 2px;
+    text-transform: uppercase; color: #1a1a1a;
+    margin-bottom: 8px;
+  }
+  p { font-size: 14px; color: #666; text-align: center; margin-bottom: 24px; }
+  label { display: block; font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 6px; }
+  input[type="text"], input[type="password"] {
+    width: 100%; padding: 14px 16px; border: 1px solid #d0d0d0;
+    border-radius: 8px; font-size: 15px; color: #1a1a1a;
+    background: #fafafa; transition: border-color 0.2s;
+  }
+  input:focus { outline: none; border-color: #1a1a1a; background: #fff; }
+  button, input[type="submit"] {
+    width: 100%; padding: 14px; background: #1a1a1a; color: #fff;
+    border: none; border-radius: 8px; font-family: 'Space Mono', monospace;
+    font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    cursor: pointer; margin-top: 12px;
+  }
+  button:hover, input[type="submit"]:hover { background: #333; }
+  .msg { margin-top: 16px; padding: 12px; border-radius: 8px; font-size: 13px; text-align: center; }
+  .msg.ok { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+  .msg.err { background: #fbe9e7; color: #c62828; border: 1px solid #ffccbc; }
+  a { color: #666; }
+  .logo {
+    font-family: 'Space Mono', monospace; font-size: 22px;
+    font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+    text-align: center; margin-bottom: 8px; color: #1a1a1a;
+  }
+</style>
+<div class="logo">NOISYLESS</div>
+<p>Connectez votre capteur au WiFi</p>
+<div class="card">
+)rawliteral");
+  wifiManager.setAPCallback([](WiFiManager* mgr) {
+    Serial.println("[WiFiManager] Captive portal ACTIVE — connect to 'NOISYLESS-Setup'");
+    // LED bleue = captive portal actif
+    digitalWrite(PIN_LED_R, HIGH);
+    digitalWrite(PIN_LED_G, HIGH);
+    digitalWrite(PIN_LED_B, LOW);  // allumé (actif bas)
+  });
+
+  Serial.println("[WiFi] Starting captive portal...");
+  if (wifiManager.autoConnect("NOISYLESS-Setup")) {
+    // Connexion réussie → sauvegarder en NVS
+    String newSSID = wifiManager.getWiFiSSID();
+    String newPass = wifiManager.getWiFiPass();
+    if (newSSID.length() > 0) {
+      prefs.putString("ssid", newSSID);
+      prefs.putString("pass", newPass);
+      Serial.printf("[WiFi] Saved credentials for \"%s\" to NVS\n", newSSID.c_str());
+    }
+    digitalWrite(PIN_LED_R, HIGH);
+    digitalWrite(PIN_LED_B, HIGH);
+    Serial.println("\n[WiFi] Connected via captive portal");
+  } else {
+    // Timeout portal → fallback hardcoded
+    Serial.println("[WiFi] Captive portal timeout, using hardcoded fallback");
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
+    int dots = 0;
+    while (WiFi.status() != WL_CONNECTED && dots < 40) {
+      delay(500);
+      Serial.print(".");
+      dots++;
+    }
+  }
+  prefs.end();
+
+  digitalWrite(PIN_LED_R, HIGH);
+  digitalWrite(PIN_LED_B, HIGH);
+  Serial.println("\n[WiFi] Connected");
+  Serial.printf("[WiFi] IP  : %s\n", WiFi.localIP().toString().c_str());
+  Serial.printf("[WiFi] RSSI: %d dBm\n", WiFi.RSSI());
+}
+
+/**
+ * @brief Connexion au broker MQTT
+ *
+ * Configure le serveur et les credentials MQTT (définis dans
+ * credentials.h), puis tente la connexion. Les erreurs sont loguées
+ * avec le code retour traduit par mqttError().
+ */
+void connectMQTT() {
+  if (mqtt.connected()) return;
+
+  mqtt.setServer(MQTT_HOST, MQTT_PORT);
+  Serial.printf("\n[MQTT] Connexion à %s:%u ...\n", MQTT_HOST, MQTT_PORT);
+  Serial.printf("[MQTT] ClientID : %s\n", CLIENT_ID);
+  Serial.printf("[MQTT] User     : %s\n", MQTT_USER);
+
+  if (mqtt.connect(CLIENT_ID, MQTT_USER, MQTT_PASS)) {
+    Serial.println("[MQTT] Connecté");
+  } else {
+    Serial.printf("[MQTT] Échec rc=%d (%s)\n", mqtt.state(), mqttError(mqtt.state()));
+  }
+}
+/** @} */
+
+
+/** @name Fonctions Setup et Loop
+ *  Point d'entrée du firmware et boucle principale */
+/** @{ */
+
+/**
+ * @brief Setup principal du firmware Noisyless
+ *
+ * Initialise dans l'ordre :
+ * 1. Console série et LEDs de statut
+ * 2. Identifiant unique DEVICE_ID depuis l'adresse MAC
+ * 3. Connexion WiFi (portail captif ou auto-connect)
+ * 4. Configuration MQTT et topics
+ * 5. Capteurs BSEC2 et LD2410
+ * 6. Première connexion MQTT et publication immédiate
+ * 7. Mutex partagé et vérification OTA au démarrage
+ * 8. Création des tâches FreeRTOS :
+ *    - task_mqtt : boucle réseau + publications périodiques + OTA
+ *    - task_adc  : échantillonnage lumière et son
+ *    - task_ld2410 : lecture radar avec tentative de ré-init
+ *    - task_bsec : boucle BSEC2 run()
+ */
 void setup() {
   Serial.begin(115200);
   delay(2000);
@@ -1160,8 +1462,14 @@ void setup() {
     6144, nullptr, 1, nullptr, 0);
 }
 
-// ------------------------------------------------
-// Loop principale
+/**
+ * @brief Boucle principale (idle)
+ *
+ * La boucle principale ne fait rien : toutes les opérations sont
+ * déléguées aux tâches FreeRTOS créées dans setup().
+ * Cette fonction reste présente pour satisfaire le framework Arduino.
+ */
 void loop() {
   vTaskDelay(pdMS_TO_TICKS(100)); // boucle idle, les tâches gèrent tout
 }
+/** @} */
