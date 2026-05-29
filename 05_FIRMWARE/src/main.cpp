@@ -64,7 +64,7 @@ static const char* PRODUCT = "noisyless_env";     /**< Identifiant produit pour 
 static const char* CLIENT_CODE = "client_demo";   /**< Code client pour les messages MQTT */
 static char DEVICE_ID[20] = {0};                  /**< Identifiant unique : NL-XXXXXXXXXXXX (basé sur MAC, généré au boot) */
 static char CLIENT_ID[32] = {0};                  /**< Identifiant MQTT : noisyless_<device_id> */
-static const char* FW_VERSION = "0.0.4";          /**< Version actuelle du firmware (SemVer) */
+static const char* FW_VERSION = "0.0.5";          /**< Version actuelle du firmware (SemVer) */
 /** @} */
 
 /** @name Constantes temporelles
@@ -1046,6 +1046,7 @@ void checkOtaManifestAndUpdate() {
       goto ota_cleanup;
     }
     if (len > 0) len -= rd;
+    yield(); // Nourrir le watchdog
   }
   https->end();
   delete https; https = nullptr;
