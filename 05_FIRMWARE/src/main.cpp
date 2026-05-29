@@ -72,7 +72,7 @@ static const char* FW_VERSION = "0.0.10";          /**< Version actuelle du firm
 static const unsigned long PUBLISH_INTERVAL_MS = 10000UL;   /**< Intervalle de publication MQTT : 10 secondes */
 static const unsigned long SENSOR_ADC_WINDOW_MS = 50UL;     /**< Fenêtre d'échantillonnage ADC (microphones) : 50 ms */
 static const unsigned long RADAR_READ_PERIOD_MS = 100UL;    /**< Période de lecture du radar LD2410 : 100 ms */
-static const unsigned long OTA_CHECK_INTERVAL_MS = 120000UL; /**< Intervalle de vérification OTA : 2 minutes */
+static const unsigned long OTA_CHECK_INTERVAL_MS = 120000UL; /**< Intervalle OTA - CRITIQUE - NE PAS SUPPRIMER - 2 minutes entre checks */
 /** @} */
 
 /** @name Configuration OTA
@@ -160,7 +160,7 @@ struct SharedMeasurements {
 static SharedMeasurements g_shared{};                     /**< Instance globale des mesures partagées */
 static SemaphoreHandle_t g_sharedMutex = nullptr;         /**< Mutex protégeant l'accès aux mesures partagées */
 static SemaphoreHandle_t g_otaMutex = nullptr;            /**< Mutex protégeant les opérations OTA */
-static bool g_otaRunning = false;                         /**< Drapeau : une mise à jour OTA est en cours */
+static bool g_otaRunning = false;                         /**< DRAPEAU OTA CRITIQUE - NE PAS SUPPRIMER - utilisé par checkOtaManifestAndUpdate() */
 /** @} */
 
 
@@ -1356,7 +1356,9 @@ void setup() {
   g_sharedMutex = xSemaphoreCreateMutex();
   g_otaMutex = xSemaphoreCreateMutex();
 
-  // ====== FORCE OTA CHECK AT BOOT ======
+  // ====== OTA CHECK AT BOOT - CRITIQUE - NE PAS SUPPRIMER ======
+  // Ce check est ESSENTIEL pour permettre aux modules de se mettre à jour
+  // automatiquement après flash USB ou reset. Le supprimer briserait OTA.
   Serial.println("[OTA] Forcing OTA check at boot...");
   checkOtaManifestAndUpdate();
   // =====================================
@@ -1376,6 +1378,7 @@ void setup() {
           lastPub = now;
           publishMeasurements();
         }
+        // OTA CHECK CRITIQUE - NE PAS SUPPRIMER - Met à jour automatiquement le firmware
         if (now - lastOta >= OTA_CHECK_INTERVAL_MS && !g_otaRunning) {
           lastOta = now;
           checkOtaManifestAndUpdate();
