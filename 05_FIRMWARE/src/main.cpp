@@ -64,7 +64,7 @@ static const char* PRODUCT = "noisyless_env";     /**< Identifiant produit pour 
 static const char* CLIENT_CODE = "client_demo";   /**< Code client pour les messages MQTT */
 static char DEVICE_ID[20] = {0};                  /**< Identifiant unique : NL-XXXXXXXXXXXX (basé sur MAC, généré au boot) */
 static char CLIENT_ID[32] = {0};                  /**< Identifiant MQTT : noisyless_<device_id> */
-static const char* FW_VERSION = "0.0.3";          /**< Version actuelle du firmware (SemVer) */
+static const char* FW_VERSION = "0.0.4";          /**< Version actuelle du firmware (SemVer) */
 /** @} */
 
 /** @name Constantes temporelles
@@ -73,7 +73,7 @@ static const char* FW_VERSION = "0.0.3";          /**< Version actuelle du firmw
 static const unsigned long PUBLISH_INTERVAL_MS = 10000UL;   /**< Intervalle de publication MQTT : 10 secondes */
 static const unsigned long SENSOR_ADC_WINDOW_MS = 50UL;     /**< Fenêtre d'échantillonnage ADC (microphones) : 50 ms */
 static const unsigned long RADAR_READ_PERIOD_MS = 100UL;    /**< Période de lecture du radar LD2410 : 100 ms */
-static const unsigned long OTA_CHECK_INTERVAL_MS = 3600000UL; /**< Intervalle de vérification OTA : 1 heure */
+static const unsigned long OTA_CHECK_INTERVAL_MS = 120000UL; /**< Intervalle de vérification OTA : 2 minutes */
 /** @} */
 
 /** @name Configuration OTA
@@ -997,6 +997,11 @@ void checkOtaManifestAndUpdate() {
     Serial.println("[OTA] Déjà à jour.");
     goto ota_cleanup;
   }
+
+  // LED violette pendant OTA
+  digitalWrite(PIN_LED_R, LOW);
+  digitalWrite(PIN_LED_B, LOW);
+  digitalWrite(PIN_LED_G, HIGH);
 
   // Téléchargement binaire et vérification SHA-256
   client = new WiFiClientSecure();

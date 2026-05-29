@@ -38,7 +38,8 @@ typedef enum {
   LED_RED   = 1,
   LED_GREEN = 2,
   LED_BLUE  = 3,
-  LED_YELLOW = 4  // rouge+vert simulé (flash rapide)
+  LED_YELLOW = 4,  // rouge+vert simulé (flash rapide)
+  LED_PURPLE = 5   // rouge+bleu pour OTA
 } led_color_t;
 
 // Timings

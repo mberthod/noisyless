@@ -35,6 +35,10 @@ void led_set(led_color_t color) {
       digitalWrite(PIN_LED_R, LOW);
       digitalWrite(PIN_LED_G, LOW);
       break;
+    case LED_PURPLE:
+      digitalWrite(PIN_LED_R, LOW);
+      digitalWrite(PIN_LED_B, LOW);
+      break;
     default: break;
   }
   g_current = color;
