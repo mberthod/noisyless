@@ -64,7 +64,7 @@ static const char* PRODUCT = "noisyless_env";     /**< Identifiant produit pour 
 static const char* CLIENT_CODE = "client_demo";   /**< Code client pour les messages MQTT */
 static char DEVICE_ID[20] = {0};                  /**< Identifiant unique : NL-XXXXXXXXXXXX (basé sur MAC, généré au boot) */
 static char CLIENT_ID[32] = {0};                  /**< Identifiant MQTT : noisyless_<device_id> */
-static const char* FW_VERSION = "0.0.6";          /**< Version actuelle du firmware (SemVer) */
+static const char* FW_VERSION = "0.0.7";          /**< Version actuelle du firmware (SemVer) */
 /** @} */
 
 /** @name Constantes temporelles
@@ -1350,18 +1350,14 @@ void setup() {
       for (;;) {
         if (WiFi.status() != WL_CONNECTED) connectWiFi();
         if (!mqtt.connected()) connectMQTT();
-  mqtt.loop();
-  unsigned long now = millis();
+        mqtt.loop();
+        unsigned long now = millis();
         if (now - lastPub >= PUBLISH_INTERVAL_MS) {
-    lastPub = now;
+          lastPub = now;
           publishMeasurements();
         }
         if (now - lastOta >= OTA_CHECK_INTERVAL_MS) {
           lastOta = now;
-          // Vérification OTA via manifest (canal stable)
-          // Non bloquant au-delà du téléchargement lui-même; exécuté rarement
-          // En cas d'échec, on attend la prochaine fenêtre
-          // Voir checkOtaManifestAndUpdate() plus bas
           extern void checkOtaManifestAndUpdate();
           checkOtaManifestAndUpdate();
         }
@@ -1369,7 +1365,7 @@ void setup() {
       }
     },
     "task_mqtt",
-    6144, nullptr, 1, nullptr, 1);
+    8192, nullptr, 1, nullptr, 1);
 
   // Tâche ADC (lumière + son)
   xTaskCreatePinnedToCore(
