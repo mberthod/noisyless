@@ -45,19 +45,53 @@ void led_set(led_color_t color) {
 }
 
 void led_show_version(const char* version) {
-  // Extrait le 3ᵉ chiffre : "2.0.7" → 7
-  int patch = 0;
+  // Parse SemVer major.minor.patch
+  int major = 0, minor = 0, patch = 0;
   int dots = 0;
+  String sMaj, sMin, sPat;
   for (const char* p = version; *p; p++) {
-    if (*p == '.') dots++;
-    if (dots == 2) { patch = atoi(p + 1); break; }
+    if (*p == '.') {
+      dots++;
+      continue;
+    }
+    if (dots == 0) sMaj += *p;
+    else if (dots == 1) sMin += *p;
+    else if (dots == 2) {
+      if (*p >= '0' && *p <= '9') sPat += *p;
+      else break;
+    }
   }
-  if (patch <= 0) patch = 1;
-  if (patch > 20) patch = 20; // sécurité
-  
-  for (int i = 0; i < patch; i++) {
-    led_set(LED_BLUE);  delay(LED_BLINK_MS);
-    led_off();           delay(LED_BLINK_MS);
+  major = sMaj.toInt();
+  minor = sMin.toInt();
+  patch = sPat.toInt();
+
+  // Logique selon version
+  if (major == 0 && minor == 0) {
+    // 0.0.x → flash en bleu x fois
+    for (int i = 0; i < patch; i++) {
+      led_set(LED_BLUE);
+      delay(LED_BLINK_MS);
+      led_off();
+      delay(LED_BLINK_MS);
+    }
+  } else if (major == 0 && minor > 0) {
+    // 0.x.y → flash en bleu minor*y fois (ou minor*10+y)
+    int count = minor * 10 + patch;
+    if (count > 30) count = 30; // sécurité
+    for (int i = 0; i < count; i++) {
+      led_set(LED_BLUE);
+      delay(LED_BLINK_MS);
+      led_off();
+      delay(LED_BLINK_MS);
+    }
+  } else if (major >= 1) {
+    // 1.x.y → flash en vert major fois
+    for (int i = 0; i < major; i++) {
+      led_set(LED_GREEN);
+      delay(LED_BLINK_MS);
+      led_off();
+      delay(LED_BLINK_MS);
+    }
   }
 }
 

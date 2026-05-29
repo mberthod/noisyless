@@ -98,7 +98,7 @@ public:
       BSEC_OUTPUT_RUN_IN_STATUS,
     };
     
-    if (!_bsec.begin(BME68X_I2C_ADDR_LOW, Wire)) {
+    if (!_bsec.begin(BME68X_I2C_ADDR_HIGH, Wire)) {
       Serial.println("[BME680] BSEC2 init failed");
       return false;
     }
