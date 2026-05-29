@@ -27,6 +27,7 @@
 #include <Preferences.h>
 
 #include "credentials.h"  // Contient uniquement les secrets MQTT
+#include "ui/led_status.h"
 
 /** @name Brochage (Pinout)
  *  Définitions des broches GPIO de l'ESP32-S3 pour chaque capteur et actionneur */
@@ -37,9 +38,7 @@ static const int PIN_MIC1 = 3;             /**< Entrée analogique microphone 1 
 static const int PIN_MIC2 = 4;             /**< Entrée analogique microphone 2 */
 static const int PIN_SYSTEM_POWERED = 5;   /**< Indicateur d'alimentation système */
 static const int PIN_SW_OPEN = 11;         /**< Interrupteur d'ouverture boîtier */
-static const int PIN_LED_B = 14;           /**< LED bleue (actif bas : LOW = allumé) */
-static const int PIN_LED_G = 13;           /**< LED verte (actif bas) */
-static const int PIN_LED_R = 12;           /**< LED rouge (actif bas) */
+// PIN_LED_R, PIN_LED_G, PIN_LED_B sont définies dans ui/led_status.h
 static const int PIN_LD2410_RX_ESP = 18;   /**< LD2410 TX → ESP RX (UART) */
 static const int PIN_LD2410_TX_ESP = 17;   /**< LD2410 RX → ESP TX (UART) */
 static const int PIN_OUT_SIGNAL = 21;      /**< Sortie signal générale */
@@ -73,7 +72,7 @@ static const char* FW_VERSION = "0.0.7";          /**< Version actuelle du firmw
 static const unsigned long PUBLISH_INTERVAL_MS = 10000UL;   /**< Intervalle de publication MQTT : 10 secondes */
 static const unsigned long SENSOR_ADC_WINDOW_MS = 50UL;     /**< Fenêtre d'échantillonnage ADC (microphones) : 50 ms */
 static const unsigned long RADAR_READ_PERIOD_MS = 100UL;    /**< Période de lecture du radar LD2410 : 100 ms */
-static const unsigned long OTA_CHECK_INTERVAL_MS = 120000UL; /**< Intervalle de vérification OTA : 2 minutes */
+static const unsigned long OTA_CHECK_INTERVAL_MS = 60000UL; /**< Intervalle de vérification OTA : 1 minute */
 /** @} */
 
 /** @name Configuration OTA
@@ -949,6 +948,9 @@ void checkOtaManifestAndUpdate() {
   uint8_t digest[32];
   String digestHex;
 
+  unsigned long ota_start_ms = millis();
+  const unsigned long OTA_TIMEOUT_MS = 90000; // Timeout global de 90s pour OTA
+  
   Serial.println("[OTA] Vérification manifest (stable)...");
 
   // Création sur le heap (évite stack corrompu par exception)
@@ -1003,10 +1005,14 @@ void checkOtaManifestAndUpdate() {
   digitalWrite(PIN_LED_B, LOW);
   digitalWrite(PIN_LED_G, HIGH);
 
-  // Téléchargement binaire et vérification SHA-256
-  client = new WiFiClientSecure();
-  if (!client) goto ota_cleanup;
-  client->setInsecure();
+   // Téléchargement binaire et vérification SHA-256
+   if (millis() - ota_start_ms > OTA_TIMEOUT_MS) {
+     Serial.println("[OTA] Timeout atteint avant téléchargement");
+     goto ota_cleanup;
+   }
+   client = new WiFiClientSecure();
+   if (!client) goto ota_cleanup;
+   client->setInsecure();
 
   https = new HTTPClient();
   if (!https) goto ota_cleanup;
@@ -1046,6 +1052,11 @@ void checkOtaManifestAndUpdate() {
       goto ota_cleanup;
     }
     if (len > 0) len -= rd;
+    if (millis() - ota_start_ms > OTA_TIMEOUT_MS) {
+      Serial.println("[OTA] Timeout pendant le téléchargement");
+      Update.abort();
+      goto ota_cleanup;
+    }
     yield(); // Nourrir le watchdog
   }
   https->end();
@@ -1065,6 +1076,10 @@ void checkOtaManifestAndUpdate() {
     goto ota_cleanup;
   }
 
+  if (millis() - ota_start_ms > OTA_TIMEOUT_MS) {
+    Serial.println("[OTA] Timeout après téléchargement avant finalisation");
+    goto ota_cleanup;
+  }
   if (!Update.end()) {
     Serial.printf("[OTA] Update.end err=%u\n", Update.getError());
     goto ota_cleanup;
@@ -1083,6 +1098,7 @@ ota_cleanup:
   if (shaStarted) mbedtls_sha256_free(&ctx);
   if (https) { https->end(); delete https; }
   if (client) { delete client; }
+  Serial.printf("[OTA] Terminé en %lu ms\n", millis() - ota_start_ms);
   g_otaRunning = false;
   xSemaphoreGive(g_otaMutex);
 }
@@ -1207,14 +1223,18 @@ ota_cleanup:
        }
      }
 
-     if (connected) {
-       prefs.end();
-       digitalWrite(PIN_LED_R, HIGH);
-       digitalWrite(PIN_LED_B, HIGH);
-       Serial.printf("[WiFi] IP  : %s\n", WiFi.localIP().toString().c_str());
-       Serial.printf("[WiFi] RSSI: %d dBm\n", WiFi.RSSI());
-       return;
-     }
+      if (connected) {
+        prefs.end();
+        digitalWrite(PIN_LED_R, HIGH);
+        digitalWrite(PIN_LED_B, HIGH);
+        Serial.printf("[WiFi] IP  : %s\n", WiFi.localIP().toString().c_str());
+        Serial.printf("[WiFi] RSSI: %d dBm\n", WiFi.RSSI());
+        
+        // Séquence LED de version après WiFi connecté
+        led_boot_sequence(FW_VERSION);
+        
+        return;
+      }
 
      prefs.end();
      delay(1000);  // pause avant réessai
@@ -1338,6 +1358,7 @@ void setup() {
 
   // ====== FORCE OTA CHECK AT BOOT ======
   Serial.println("[OTA] Forcing OTA check at boot...");
+  g_otaRunning = true; // Blockera le premier check concurrent
   checkOtaManifestAndUpdate();
   // =====================================
 
@@ -1356,9 +1377,8 @@ void setup() {
           lastPub = now;
           publishMeasurements();
         }
-        if (now - lastOta >= OTA_CHECK_INTERVAL_MS) {
+        if (now - lastOta >= OTA_CHECK_INTERVAL_MS && !g_otaRunning) {
           lastOta = now;
-          extern void checkOtaManifestAndUpdate();
           checkOtaManifestAndUpdate();
         }
         vTaskDelay(pdMS_TO_TICKS(10));
