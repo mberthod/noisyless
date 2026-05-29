@@ -64,7 +64,7 @@ static const char* PRODUCT = "noisyless_env";     /**< Identifiant produit pour 
 static const char* CLIENT_CODE = "client_demo";   /**< Code client pour les messages MQTT */
 static char DEVICE_ID[20] = {0};                  /**< Identifiant unique : NL-XXXXXXXXXXXX (basé sur MAC, généré au boot) */
 static char CLIENT_ID[32] = {0};                  /**< Identifiant MQTT : noisyless_<device_id> */
-static const char* FW_VERSION = "0.0.5";          /**< Version actuelle du firmware (SemVer) */
+static const char* FW_VERSION = "0.0.6";          /**< Version actuelle du firmware (SemVer) */
 /** @} */
 
 /** @name Constantes temporelles
@@ -1111,9 +1111,10 @@ ota_cleanup:
      digitalWrite(PIN_LED_G, HIGH);
      digitalWrite(PIN_LED_B, HIGH);
 
-     prefs.begin(PREFS_NS, false);
+     prefs.begin(PREFS_NS, false); // read-only pour lire
      String savedSSID = prefs.getString("ssid", "");
      String savedPass = prefs.getString("pass", "");
+     prefs.end();
 
      bool connected = false;
 
@@ -1123,7 +1124,12 @@ ota_cleanup:
        WiFi.mode(WIFI_STA);
        WiFi.begin(savedSSID.c_str(), savedPass.c_str());
        int dots = 0;
-       while (WiFi.status() != WL_CONNECTED && dots < 30) { delay(500); Serial.print("."); dots++; }
+       while (WiFi.status() != WL_CONNECTED && dots < 30) { 
+         delay(500); 
+         Serial.print("."); 
+         dots++;
+         yield(); // WDT
+       }
        if (WiFi.status() == WL_CONNECTED) {
          connected = true;
        } else {
@@ -1165,27 +1171,30 @@ ota_cleanup:
          digitalWrite(PIN_LED_B, LOW);
        });
 
-       if (wifiManager.autoConnect("NOISYLESS-Setup")) {
-         String newSSID = wifiManager.getWiFiSSID();
-         String newPass = wifiManager.getWiFiPass();
-         if (newSSID.length() > 0) {
-           prefs.putString("ssid", newSSID);
-           prefs.putString("pass", newPass);
-           Serial.printf("[WiFi] Saved credentials for \"%s\" to NVS\n", newSSID.c_str());
-         }
-         connected = true;
-         Serial.println("\n[WiFi] ✓ Connected via captive portal");
-       } else {
+        if (wifiManager.autoConnect("NOISYLESS-Setup")) {
+          String newSSID = wifiManager.getWiFiSSID();
+          String newPass = wifiManager.getWiFiPass();
+          if (newSSID.length() > 0) {
+            prefs.begin(PREFS_NS, false); // write mode
+            prefs.putString("ssid", newSSID);
+            prefs.putString("pass", newPass);
+            prefs.end();
+            Serial.printf("[WiFi] Saved credentials for \"%s\" to NVS\n", newSSID.c_str());
+          }
+          connected = true;
+          Serial.println("\n[WiFi] ✓ Connected via captive portal");
+        } else {
          // ---- Étape 3 : fallback TP-Link_B150 ----
          Serial.println("[WiFi] Captive portal timeout, fallback TP-Link_B150 (20s)...");
          WiFi.mode(WIFI_STA);
          WiFi.begin(WIFI_SSID, WIFI_PASS);
-         int dots = 0;
-         while (WiFi.status() != WL_CONNECTED && dots < 40) {
-           delay(500);
-           Serial.print(".");
-           dots++;
-         }
+          int dots = 0;
+          while (WiFi.status() != WL_CONNECTED && dots < 40) {
+            delay(500);
+            Serial.print(".");
+            dots++;
+            yield(); // WDT
+          }
          if (WiFi.status() == WL_CONNECTED) {
            Serial.println("\n[WiFi] ✓ Fallback TP-Link_B150 connected — rebooting...");
            connected = true;
