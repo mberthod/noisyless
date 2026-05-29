@@ -63,7 +63,7 @@ static const char* PRODUCT = "noisyless_env";     /**< Identifiant produit pour 
 static const char* CLIENT_CODE = "client_demo";   /**< Code client pour les messages MQTT */
 static char DEVICE_ID[20] = {0};                  /**< Identifiant unique : NL-XXXXXXXXXXXX (basé sur MAC, généré au boot) */
 static char CLIENT_ID[32] = {0};                  /**< Identifiant MQTT : noisyless_<device_id> */
-static const char* FW_VERSION = "0.0.8";          /**< Version actuelle du firmware (SemVer) */
+static const char* FW_VERSION = "0.0.9";          /**< Version actuelle du firmware (SemVer) */
 /** @} */
 
 /** @name Constantes temporelles
