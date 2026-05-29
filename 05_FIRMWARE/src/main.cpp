@@ -9,7 +9,7 @@
  * - Capteurs analogiques (luxmètres, microphones)
  * - Mise à jour OTA via manifest JSON + SHA-256
  *
- * @version 0.0.2
+ * @version 0.0.3
  * @author Noisyless
  */
 
@@ -64,7 +64,7 @@ static const char* PRODUCT = "noisyless_env";     /**< Identifiant produit pour 
 static const char* CLIENT_CODE = "client_demo";   /**< Code client pour les messages MQTT */
 static char DEVICE_ID[20] = {0};                  /**< Identifiant unique : NL-XXXXXXXXXXXX (basé sur MAC, généré au boot) */
 static char CLIENT_ID[32] = {0};                  /**< Identifiant MQTT : noisyless_<device_id> */
-static const char* FW_VERSION = "0.0.2";          /**< Version actuelle du firmware (SemVer) */
+static const char* FW_VERSION = "0.0.3";          /**< Version actuelle du firmware (SemVer) */
 /** @} */
 
 /** @name Constantes temporelles
@@ -1088,147 +1088,123 @@ ota_cleanup:
 /** @{ */
 
 /**
- * @brief Connexion au WiFi avec WiFiManager + portail captif
- *
- * Stratégie de connexion à trois niveaux :
- * 1. Credentials sauvegardés en NVS → auto-connect
- * 2. Échec → portail captif "NOISYLESS-Setup" (15s timeout)
- * 3. Timeout du portail → fallback vers les credentials hardcodés (TP-Link_B150)
- * Les credentials saisis via le portail sont persistés en NVS pour les boots suivants.
- */
-void connectWiFi() {
-  if (WiFi.status() == WL_CONNECTED) return;
+  * @brief Connexion au WiFi avec WiFiManager + portail captif
+  *
+  * Séquence de connexion en boucle jusqu'à succès :
+  * 1. Si credentials NVS → auto-connect (15s)
+  * 2. Sinon → captive portal "NOISYLESS-Setup" (60s)
+  * 3. Timeout portal → fallback TP-Link_B150 hardcodé (20s)
+  * 4. Fallback connecté → reboot (pour repartir proprement)
+  * 5. Fallback échoué → retour au captive portal (boucle)
+  *
+  * Le module ne démarre pas sans WiFi.
+  */
+ void connectWiFi() {
+   while (WiFi.status() != WL_CONNECTED) {
+     digitalWrite(PIN_LED_R, LOW);
+     digitalWrite(PIN_LED_G, HIGH);
+     digitalWrite(PIN_LED_B, HIGH);
 
-  // LED rouge pendant connexion
-  digitalWrite(PIN_LED_R, LOW);   // allumé (actif bas)
-  digitalWrite(PIN_LED_G, HIGH);
-  digitalWrite(PIN_LED_B, HIGH);
+     prefs.begin(PREFS_NS, false);
+     String savedSSID = prefs.getString("ssid", "");
+     String savedPass = prefs.getString("pass", "");
 
-  prefs.begin(PREFS_NS, false);
-  String savedSSID = prefs.getString("ssid", "");
-  String savedPass = prefs.getString("pass", "");
+     bool connected = false;
 
-  if (savedSSID.length() > 0) {
-    // Credentials déjà sauvegardés → auto-connect
-    Serial.printf("[WiFi] Auto-connect to saved AP \"%s\"\n", savedSSID.c_str());
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(savedSSID.c_str(), savedPass.c_str());
+     // ---- Étape 1 : auto-connect NVS ----
+     if (savedSSID.length() > 0) {
+       Serial.printf("[WiFi] Auto-connect to saved AP \"%s\"\n", savedSSID.c_str());
+       WiFi.mode(WIFI_STA);
+       WiFi.begin(savedSSID.c_str(), savedPass.c_str());
+       int dots = 0;
+       while (WiFi.status() != WL_CONNECTED && dots < 30) { delay(500); Serial.print("."); dots++; }
+       if (WiFi.status() == WL_CONNECTED) {
+         connected = true;
+       } else {
+         Serial.printf("\n[WiFi] ✗ Saved AP \"%s\" unavailable\n", savedSSID.c_str());
+       }
+     }
 
-    int dots = 0;
-    while (WiFi.status() != WL_CONNECTED && dots < 30) { // timeout 15s
-      delay(500);
-      Serial.print(".");
-      dots++;
-    }
-    if (WiFi.status() == WL_CONNECTED) {
-      digitalWrite(PIN_LED_R, HIGH); // LED éteinte
-      Serial.println("\n[WiFi] Connected to saved AP");
-      prefs.end();
-      return;
-    }
-    // Échec auto-connect → fallback captive portal
-    Serial.println("\n[WiFi] Saved AP failed, starting captive portal...");
-  }
+     // ---- Étape 2 : captive portal 60s ----
+     if (!connected) {
+       Serial.println("[WiFi] Starting captive portal 'NOISYLESS-Setup' (60s)...");
+       wifiManager.setTitle("NOISYLESS");
+       wifiManager.setConfigPortalTimeout(60);
+       wifiManager.setCustomHeadElement(PROGMEM R"rawliteral(
+ <style>
+   *, *::before, *::after { box-sizing: border-box; }
+   body { font-family:'IBM Plex Sans',sans-serif !important; background:#fff !important; color:#1a1a1a !important; margin:0; padding:24px; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; }
+   .card { max-width:420px; width:100%; background:#fff; border:1px solid #e0e0e0; border-radius:12px; padding:32px 24px; }
+   h2,h1 { font-family:'Space Mono',monospace !important; font-size:16px !important; font-weight:700 !important; text-align:center; text-transform:uppercase; letter-spacing:1px; }
+   h1 { font-size:22px !important; letter-spacing:2px; margin-bottom:8px; }
+   p { font-size:14px; color:#666; text-align:center; margin-bottom:24px; }
+   label { display:block; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:#666; margin-bottom:6px; }
+   input[type="text"],input[type="password"] { width:100%; padding:14px 16px; border:1px solid #d0d0d0; border-radius:8px; font-size:15px; color:#1a1a1a; background:#fafafa; }
+   input:focus { outline:none; border-color:#1a1a1a; background:#fff; }
+   button,input[type="submit"] { width:100%; padding:14px; background:#1a1a1a; color:#fff; border:none; border-radius:8px; font-family:'Space Mono',monospace; font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:1px; cursor:pointer; margin-top:12px; }
+   button:hover,input[type="submit"]:hover { background:#333; }
+   .msg { margin-top:16px; padding:12px; border-radius:8px; font-size:13px; text-align:center; }
+   .msg.ok { background:#e8f5e9; color:#2e7d32; border:1px solid #c8e6c9; }
+   .msg.err { background:#fbe9e7; color:#c62828; border:1px solid #ffccbc; }
+   .logo { font-family:'Space Mono',monospace; font-size:22px; font-weight:700; letter-spacing:2px; text-transform:uppercase; text-align:center; margin-bottom:8px; color:#1a1a1a; }
+ </style>
+ <div class="logo">NOISYLESS</div>
+ <p>Connectez votre capteur au WiFi</p>
+ <div class="card">
+ )rawliteral");
+       wifiManager.setAPCallback([](WiFiManager* mgr) {
+         Serial.println("[WiFiManager] Captive portal ACTIVE — connect to 'NOISYLESS-Setup'");
+         digitalWrite(PIN_LED_R, HIGH);
+         digitalWrite(PIN_LED_G, HIGH);
+         digitalWrite(PIN_LED_B, LOW);
+       });
 
-  // Captive portal "NOISYLESS-Setup"
-  wifiManager.setTitle("NOISYLESS");
-  wifiManager.setConfigPortalTimeout(15); // 15s → fallback rapide TP-Link_B150
-  wifiManager.setCustomHeadElement(PROGMEM R"rawliteral(
-<style>
-  *, *::before, *::after { box-sizing: border-box; }
-  body {
-    font-family: 'IBM Plex Sans', -apple-system, sans-serif !important;
-    background: #ffffff !important;
-    color: #1a1a1a !important;
-    margin: 0; padding: 24px;
-    display: flex; flex-direction: column; align-items: center;
-    justify-content: center; min-height: 100vh;
-  }
-  .card { 
-    max-width: 420px; width: 100%;
-    background: #fff; border: 1px solid #e0e0e0;
-    border-radius: 12px; padding: 32px 24px;
-  }
-  h2, h1 { font-family: 'Space Mono', monospace !important; 
-    font-size: 16px !important; font-weight: 700 !important;
-    text-align: center; text-transform: uppercase; letter-spacing: 1px; }
-  h1 {
-    font-family: 'Space Mono', monospace !important;
-    font-size: 22px !important; letter-spacing: 2px;
-    text-transform: uppercase; color: #1a1a1a;
-    margin-bottom: 8px;
-  }
-  p { font-size: 14px; color: #666; text-align: center; margin-bottom: 24px; }
-  label { display: block; font-size: 12px; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 6px; }
-  input[type="text"], input[type="password"] {
-    width: 100%; padding: 14px 16px; border: 1px solid #d0d0d0;
-    border-radius: 8px; font-size: 15px; color: #1a1a1a;
-    background: #fafafa; transition: border-color 0.2s;
-  }
-  input:focus { outline: none; border-color: #1a1a1a; background: #fff; }
-  button, input[type="submit"] {
-    width: 100%; padding: 14px; background: #1a1a1a; color: #fff;
-    border: none; border-radius: 8px; font-family: 'Space Mono', monospace;
-    font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
-    cursor: pointer; margin-top: 12px;
-  }
-  button:hover, input[type="submit"]:hover { background: #333; }
-  .msg { margin-top: 16px; padding: 12px; border-radius: 8px; font-size: 13px; text-align: center; }
-  .msg.ok { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
-  .msg.err { background: #fbe9e7; color: #c62828; border: 1px solid #ffccbc; }
-  a { color: #666; }
-  .logo {
-    font-family: 'Space Mono', monospace; font-size: 22px;
-    font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
-    text-align: center; margin-bottom: 8px; color: #1a1a1a;
-  }
-</style>
-<div class="logo">NOISYLESS</div>
-<p>Connectez votre capteur au WiFi</p>
-<div class="card">
-)rawliteral");
-  wifiManager.setAPCallback([](WiFiManager* mgr) {
-    Serial.println("[WiFiManager] Captive portal ACTIVE — connect to 'NOISYLESS-Setup'");
-    // LED bleue = captive portal actif
-    digitalWrite(PIN_LED_R, HIGH);
-    digitalWrite(PIN_LED_G, HIGH);
-    digitalWrite(PIN_LED_B, LOW);  // allumé (actif bas)
-  });
+       if (wifiManager.autoConnect("NOISYLESS-Setup")) {
+         String newSSID = wifiManager.getWiFiSSID();
+         String newPass = wifiManager.getWiFiPass();
+         if (newSSID.length() > 0) {
+           prefs.putString("ssid", newSSID);
+           prefs.putString("pass", newPass);
+           Serial.printf("[WiFi] Saved credentials for \"%s\" to NVS\n", newSSID.c_str());
+         }
+         connected = true;
+         Serial.println("\n[WiFi] ✓ Connected via captive portal");
+       } else {
+         // ---- Étape 3 : fallback TP-Link_B150 ----
+         Serial.println("[WiFi] Captive portal timeout, fallback TP-Link_B150 (20s)...");
+         WiFi.mode(WIFI_STA);
+         WiFi.begin(WIFI_SSID, WIFI_PASS);
+         int dots = 0;
+         while (WiFi.status() != WL_CONNECTED && dots < 40) {
+           delay(500);
+           Serial.print(".");
+           dots++;
+         }
+         if (WiFi.status() == WL_CONNECTED) {
+           Serial.println("\n[WiFi] ✓ Fallback TP-Link_B150 connected — rebooting...");
+           connected = true;
+           prefs.end();
+           delay(500);
+           ESP.restart();  // reboot pour démarrer proprement avec ce WiFi
+         } else {
+           Serial.println("\n[WiFi] ✗ Fallback failed — restarting captive portal");
+         }
+       }
+     }
 
-  Serial.println("[WiFi] Starting captive portal...");
-  if (wifiManager.autoConnect("NOISYLESS-Setup")) {
-    // Connexion réussie → sauvegarder en NVS
-    String newSSID = wifiManager.getWiFiSSID();
-    String newPass = wifiManager.getWiFiPass();
-    if (newSSID.length() > 0) {
-      prefs.putString("ssid", newSSID);
-      prefs.putString("pass", newPass);
-      Serial.printf("[WiFi] Saved credentials for \"%s\" to NVS\n", newSSID.c_str());
-    }
-    digitalWrite(PIN_LED_R, HIGH);
-    digitalWrite(PIN_LED_B, HIGH);
-    Serial.println("\n[WiFi] Connected via captive portal");
-  } else {
-    // Timeout portal → fallback hardcoded
-    Serial.println("[WiFi] Captive portal timeout, using hardcoded fallback");
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(WIFI_SSID, WIFI_PASS);
-    int dots = 0;
-    while (WiFi.status() != WL_CONNECTED && dots < 40) {
-      delay(500);
-      Serial.print(".");
-      dots++;
-    }
-  }
-  prefs.end();
+     if (connected) {
+       prefs.end();
+       digitalWrite(PIN_LED_R, HIGH);
+       digitalWrite(PIN_LED_B, HIGH);
+       Serial.printf("[WiFi] IP  : %s\n", WiFi.localIP().toString().c_str());
+       Serial.printf("[WiFi] RSSI: %d dBm\n", WiFi.RSSI());
+       return;
+     }
 
-  digitalWrite(PIN_LED_R, HIGH);
-  digitalWrite(PIN_LED_B, HIGH);
-  Serial.println("\n[WiFi] Connected");
-  Serial.printf("[WiFi] IP  : %s\n", WiFi.localIP().toString().c_str());
-  Serial.printf("[WiFi] RSSI: %d dBm\n", WiFi.RSSI());
-}
+     prefs.end();
+     delay(1000);  // pause avant réessai
+   }
+ }
 
 /**
  * @brief Connexion au broker MQTT
