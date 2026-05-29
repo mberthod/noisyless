@@ -1358,7 +1358,6 @@ void setup() {
 
   // ====== FORCE OTA CHECK AT BOOT ======
   Serial.println("[OTA] Forcing OTA check at boot...");
-  g_otaRunning = true; // Blockera le premier check concurrent
   checkOtaManifestAndUpdate();
   // =====================================
 
