@@ -1,0 +1,7 @@
+{
+  "latest": "0.0.3",
+  "min": "0.0.0",
+  "bin": "https://noisyless.com/firmware/noisyless-v0.0.3.bin",
+  "sha256": "d4346d9452dde7186495a99e70b9602fbc6a7a5ad5d1a1d9895527b8c400e268",
+  "changelog": "Fix: Guru Meditation Error Core 1 panic (double exception) during OTA HTTPS check - mutex protection + heap-allocated WiFiClientSecure"
+}

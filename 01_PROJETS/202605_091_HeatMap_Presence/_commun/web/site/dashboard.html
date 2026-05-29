@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | NOISYLESS — Plateforme de monitoring</title>
+    <meta name="description" content="Accédez à votre tableau de bord NOISYLESS. Monitoring en temps réel, exports, alertes.">
+    <link rel="canonical" href="https://noisyless.com/dashboard.html">
+    <link rel="alternate" hreflang="fr-FR" href="https://noisyless.com/dashboard.html">
+    <link rel="alternate" hreflang="x-default" href="https://noisyless.com/dashboard.html">
+    <meta property="og:title" content="Dashboard | NOISYLESS — Plateforme de monitoring">
+    <meta property="og:description" content="Accédez à votre tableau de bord NOISYLESS. Monitoring en temps réel, exports, alertes.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://noisyless.com/dashboard.html">
+    <meta property="og:image" content="https://noisyless.com/assets/logohorizmonochrome.png">
+    <meta property="og:image:alt" content="NOISYLESS — Capteurs intelligents pour l'immobilier">
+    <meta property="og:site_name" content="NOISYLESS">
+    <meta property="og:locale" content="fr_FR">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #FFFFFF; --bg-alt: #F5F5F3; --ink: #1A1A1A; --ink-light: #5A5A5A; --border: #E0E0E0; --signal: #1A61FE; --success: #00A859; --font-display: 'Space Mono', monospace; --font-body: 'IBM Plex Sans', sans-serif; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-body); background: var(--bg); color: var(--ink); line-height: 1.7; }
+        h1, h2, h3, h4 { font-family: var(--font-display); }
+        h1 { font-size: clamp(2rem, 5vw, 3rem); margin-bottom: 1rem; }
+        h2 { font-size: clamp(1.5rem, 3vw, 2rem); margin-bottom: 0.75rem; }
+        h3 { font-size: clamp(1.25rem, 2vw, 1.5rem); margin-bottom: 0.5rem; }
+        p { color: var(--ink-light); margin-bottom: 1rem; max-width: 70ch; }
+        a { color: var(--signal); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+        .section { padding: 80px 0; }
+        .section-alt { background: var(--bg-alt); }
+        header { border-bottom: 1px solid var(--border); padding: 20px 0; position: sticky; top: 0; background: var(--bg); z-index: 100; }
+        .header-inner { display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--ink); }
+        .logo img { height: 32px; }
+        .logo-text { font-family: var(--font-display); font-weight: 700; font-size: 1.125rem; }
+        nav ul { display: flex; list-style: none; gap: 28px; align-items: center; }
+        nav a { color: var(--ink); font-family: var(--font-display); font-size: 0.875rem; border-bottom: 2px solid transparent; padding-bottom: 4px; }
+        nav a:hover { border-bottom-color: var(--signal); text-decoration: none; }
+        .nav-cta { background: var(--signal); color: white !important; padding: 10px 20px; border-radius: 6px; font-weight: 600; }
+        .nav-cta:hover { background: #1550D9; text-decoration: none; }
+        .eyebrow { font-family: var(--font-display); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--signal); margin-bottom: 1rem; display: block; }
+        .btn { display: inline-block; padding: 14px 28px; font-family: var(--font-display); font-weight: 700; background: var(--signal); color: white; border-radius: 6px; border: none; cursor: pointer; }
+        .btn:hover { background: #1550D9; text-decoration: none; }
+        .btn-outline { background: transparent; border: 2px solid var(--signal); color: var(--signal); }
+        .btn-outline:hover { background: var(--signal); color: white; text-decoration: none; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #008F4D; }
+        .mono { font-family: var(--font-display); }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 4px; font-family: var(--font-display); font-size: 0.75rem; font-weight: 600; }
+        .badge-available { background: #D4EDDA; color: #155724; }
+        .badge-soon { background: #FFF3CD; color: #856404; }
+        .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin: 48px 0; }
+        @media (max-width: 900px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 600px) { .cards { grid-template-columns: 1fr; } }
+        .card { padding: 32px; border: 1px solid var(--border); border-radius: 8px; transition: transform 0.2s, box-shadow 0.2s; }
+        .card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+        .card-icon { font-size: 2rem; margin-bottom: 16px; }
+        .card h3 { margin-bottom: 12px; }
+        .card p { font-size: 0.9375rem; margin-bottom: 0; }
+        .cta-band { background: var(--ink); color: white; padding: 80px 0; text-align: center; }
+        .cta-band h2 { color: white; margin-bottom: 16px; }
+        .cta-band p { color: rgba(255,255,255,0.7); margin: 0 auto 32px; }
+        .cta-band .btn { background: var(--signal); color: white; }
+        footer { border-top: 1px solid var(--border); padding: 60px 0 40px; margin-top: 80px; }
+        .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+        @media (max-width: 900px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 600px) { .footer-grid { grid-template-columns: 1fr; } }
+        .footer-brand p { font-size: 0.9rem; color: var(--ink-light); margin-bottom: 20px; }
+        .footer-links h4 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-light); margin-bottom: 16px; font-family: var(--font-display); }
+        .footer-links ul { list-style: none; }
+        .footer-links li { margin-bottom: 12px; }
+        .footer-links a { color: var(--ink); font-size: 0.9rem; }
+        .footer-bottom { display: flex; justify-content: space-between; align-items: center; padding-top: 32px; border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--ink-light); }
+        @media (max-width: 600px) { .footer-bottom { flex-direction: column; gap: 16px; } }
+:root {
+            --bg: #0f0f1a;
+            --card: #1a1a2e;
+            --border: #2a2a4e;
+            --ink: #e0e0e0;
+            --accent: #4f6ef7;
+            --accent-hover: #3d5ce5;
+            --danger: #ff4444;
+            --success: #22c55e;
+            --font-mono: 'SF Mono', 'Fira Code', monospace;
+            --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font-body);
+            background: var(--bg);
+            color: var(--ink);
+            min-height: 100vh;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        /* Login page */
+        .login-page {
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh;
+        }
+        .login-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 3rem;
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+        .login-card h1 {
+            font-family: var(--font-mono);
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: #fff;
+        }
+        .login-card .subtitle {
+            color: #888;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+        .login-card input {
+            width: 100%;
+            padding: 14px 16px;
+            margin-bottom: 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+            font-family: var(--font-body);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .login-card input:focus { border-color: var(--accent); }
+        .login-card button {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 0.5rem;
+        }
+        .login-card button:hover { background: var(--accent-hover); }
+        .login-card .error {
+            color: var(--danger);
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            min-height: 1.2em;
+        }
+        .login-card .link {
+            color: var(--accent);
+            font-size: 0.85rem;
+            margin-top: 1.5rem;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .login-card .link:hover { text-decoration: underline; }
+        /* Dashboard page */
+        .dashboard { display: none; }
+        .dashboard.active { display: block; }
+        .dashboard header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .dashboard header h1 {
+            font-family: var(--font-mono);
+            font-size: 1.5rem;
+            color: #fff;
+        }
+        .dashboard header button {
+            padding: 8px 16px;
+            background: transparent;
+            color: var(--danger);
+            border: 1px solid var(--danger);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .dashboard header button:hover { background: rgba(255,68,68,0.1); }
+        .dashboard .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .dashboard .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        .dashboard .card .label {
+            font-size: 0.8rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+        .dashboard .card .value {
+            font-family: var(--font-mono);
+            font-size: 2rem;
+            color: #fff;
+        }
+        .dashboard .card .unit {
+            font-size: 1rem;
+            color: #888;
+        }
+        .device-list {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        .device-list h3 {
+            font-family: var(--font-mono);
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+        .device-list .device-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+        }
+        .device-row:last-child { border-bottom: none; }
+        .device-row .status { color: var(--success); }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top: 2px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading { text-align: center; padding: 3rem; color: #888; }
+    </style>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "NOISYLESS SAS",
+        "url": "https://noisyless.com",
+        "logo": "https://noisyless.com/assets/logohorizmonochrome.png",
+        "description": "Capteurs intelligents pour l'immobilier — détection occupation, bruit, qualité d'air",
+        "email": "contact@noisyless.com",
+        "sameAs": ["https://www.linkedin.com/company/noisyless"]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "NOISYLESS",
+        "url": "https://noisyless.com",
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://noisyless.com/search?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+        }
+    }
+    </script>
+</head>
+<body>
+    <header>
+        <div class="container header-inner">
+            <a href="/" class="logo">
+                <img src="/assets/logohorizmonochrome.png" alt="NOISYLESS">
+                <span class="logo-text">NOISYLESS</span>
+            </a>
+            <nav>
+                <ul>
+                    <li><a href="/#produits">Produits</a></li>
+                    <li><a href="/#fonctionnement">Fonctionnement</a></li>
+                    <li><a href="/faq.html">FAQ</a></li>
+                    <li><a href="/blog/">Blog</a></li>
+                    <li><a href="https://platform.noisyless.com" class="nav-cta">Dashboard</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+<div class="cards" id="live-cards">
+                <div class="loading"><span class="spinner"></span> Chargement des données...</div>
+            </div>
+            <div class="device-list">
+                <h3>📡 Mes capteurs</h3>
+                <div id="device-list-content">
+                    <div class="loading"><span class="spinner"></span> Chargement...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+const API = window.location.origin; // use same origin
+
+function doLogin() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const errEl = document.getElementById('login-error');
+    errEl.textContent = '';
+
+    fetch(API + '/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.access_token) {
+            localStorage.setItem('noisyless_token', data.access_token);
+            document.getElementById('login-page').style.display = 'none';
+            document.getElementById('dashboard').classList.add('active');
+            loadDashboard();
+        } else {
+            errEl.textContent = data.detail || 'Identifiants invalides';
+        }
+    })
+    .catch(() => {
+        errEl.textContent = 'Erreur de connexion au serveur';
+    });
+}
+
+function doLogout() {
+    localStorage.removeItem('noisyless_token');
+    document.getElementById('dashboard').classList.remove('active');
+    document.getElementById('login-page').style.display = 'flex';
+    document.getElementById('email').value = '';
+    document.getElementById('password').value = '';
+}
+
+function loadDashboard() {
+    const token = localStorage.getItem('noisyless_token');
+    if (!token) return;
+
+    // Load devices
+    fetch(API + '/api/devices', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(devices => {
+        const el = document.getElementById('device-list-content');
+        if (!devices || devices.length === 0) {
+            el.innerHTML = '<p style="color:#888">Aucun capteur enregistré</p>';
+            return;
+        }
+        el.innerHTML = devices.map(d => `
+            <div class="device-row">
+                <span>🔌 ${d.device_id || d.duid || 'Inconnu'}</span>
+                <span class="status">● ${d.status || 'online'}</span>
+                <span style="color:#888">${d.device_type || ''}</span>
+            </div>
+        `).join('');
+    })
+    .catch(() => {
+        document.getElementById('device-list-content').innerHTML = '<p style="color:#ff4444">Erreur de chargement</p>';
+    });
+
+    // Load latest measurements
+    fetch(API + '/api/devices', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(devices => {
+        const el = document.getElementById('live-cards');
+        if (!devices || devices.length === 0) {
+            el.innerHTML = '<div class="card"><div class="label">Statut</div><div class="value">Aucun capteur</div></div>';
+            return;
+        }
+        // Fetch latest measurement for first device
+        const deviceId = devices[0].device_id || devices[0].duid;
+        return fetch(API + '/api/measurements/' + deviceId + '/latest', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+    })
+    .then(r => r ? r.json() : null)
+    .then(data => {
+        const el = document.getElementById('live-cards');
+        if (data && data.temperature_c !== undefined) {
+            el.innerHTML = `
+                <div class="card">
+                    <div class="label">Température</div>
+                    <div class="value">${data.temperature_c}<span class="unit">°C</span></div>
+                </div>
+                <div class="card">
+                    <div class="label">Humidité</div>
+                    <div class="value">${data.humidity_pct}<span class="unit">%</span></div>
+                </div>
+                <div class="card">
+                    <div class="label">Qualité d'air (IAQ)</div>
+                    <div class="value">${data.iaq}</div>
+                </div>
+                <div class="card">
+                    <div class="label">Présence</div>
+                    <div class="value">${data.presence ? '🟢 Oui' : '🔴 Non'}</div>
+                </div>
+            `;
+        } else {
+            el.innerHTML = '<div class="card"><div class="label">Données</div><div class="value">En attente...</div></div>';
+        }
+    })
+    .catch(() => {
+        document.getElementById('live-cards').innerHTML = '<div class="card"><div class="label">Données</div><div class="value">En attente...</div></div>';
+    });
+}
+
+// Auto-login if token exists
+(function() {
+    const token = localStorage.getItem('noisyless_token');
+    if (token) {
+        // Verify token is still valid
+        fetch(API + '/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(r => {
+            if (r.ok) {
+                document.getElementById('login-page').style.display = 'none';
+                document.getElementById('dashboard').classList.add('active');
+                loadDashboard();
+            } else {
+                localStorage.removeItem('noisyless_token');
+            }
+        })
+        .catch(() => localStorage.removeItem('noisyless_token'));
+    }
+})();
+</script>
+</body>
+</html>
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="logo" style="margin-bottom: 16px;">
+                        <img src="/assets/logohorizmonochrome.png" alt="NOISYLESS">
+                    </div>
+                    <p>Capteurs intelligents pour l'immobilier. Détection occupation, bruit, qualité d'air.</p>
+                    <p class="mono" style="font-size: 0.85rem;">NOISYLESS SAS — Périgueux, France</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Produits</h4>
+                    <ul>
+                        <li><a href="/produits/noisyless-simple.html">NOISYLESS Simple</a></li>
+                        <li><a href="/produits/heatmap.html">HeatMap</a></li>
+                        <li><a href="/produits/heatmap-indoor.html">HeatMap Indoor</a></li>
+                        <li><a href="/produits/heatmap-outdoor.html">HeatMap Outdoor</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h4>Ressources</h4>
+                    <ul>
+                        <li><a href="/faq.html">FAQ</a></li>
+                        <li><a href="/blog/">Blog</a></li>
+                        <li><a href="/technologie/intelligence-spatiale.html">Technologie</a></li>
+                        <li><a href="/comparatif/heatmap-vs-camera.html">Comparatifs</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h4>Légal</h4>
+                    <ul>
+                        <li><a href="/mentions-legales.html">Mentions légales</a></li>
+                        <li><a href="/confidentialite.html">Confidentialité</a></li>
+                        <li><a href="/cgv.html">CGV</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <span>© 2026 NOISYLESS SAS. Tous droits réservés.</span>
+                <span class="mono" style="font-size: 0.85rem;">Hébergé en France — RGPD compliant</span>
+            </div>
+        </div>
+    </footer>
+<script>
+const API = window.location.origin; // use same origin
+
+function doLogin() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const errEl = document.getElementById('login-error');
+    errEl.textContent = '';
+
+    fetch(API + '/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.access_token) {
+            localStorage.setItem('noisyless_token', data.access_token);
+            document.getElementById('login-page').style.display = 'none';
+            document.getElementById('dashboard').classList.add('active');
+            loadDashboard();
+        } else {
+            errEl.textContent = data.detail || 'Identifiants invalides';
+        }
+    })
+    .catch(() => {
+        errEl.textContent = 'Erreur de connexion au serveur';
+    });
+}
+
+function doLogout() {
+    localStorage.removeItem('noisyless_token');
+    document.getElementById('dashboard').classList.remove('active');
+    document.getElementById('login-page').style.display = 'flex';
+    document.getElementById('email').value = '';
+    document.getElementById('password').value = '';
+}
+
+function loadDashboard() {
+    const token = localStorage.getItem('noisyless_token');
+    if (!token) return;
+
+    // Load devices
+    fetch(API + '/api/devices', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(devices => {
+        const el = document.getElementById('device-list-content');
+        if (!devices || devices.length === 0) {
+            el.innerHTML = '<p style="color:#888">Aucun capteur enregistré</p>';
+            return;
+        }
+        el.innerHTML = devices.map(d => `
+            <div class="device-row">
+                <span>🔌 ${d.device_id || d.duid || 'Inconnu'}</span>
+                <span class="status">● ${d.status || 'online'}</span>
+                <span style="color:#888">${d.device_type || ''}</span>
+            </div>
+        `).join('');
+    })
+    .catch(() => {
+        document.getElementById('device-list-content').innerHTML = '<p style="color:#ff4444">Erreur de chargement</p>';
+    });
+
+    // Load latest measurements
+    fetch(API + '/api/devices', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(devices => {
+        const el = document.getElementById('live-cards');
+        if (!devices || devices.length === 0) {
+            el.innerHTML = '<div class="card"><div class="label">Statut</div><div class="value">Aucun capteur</div></div>';
+            return;
+        }
+        // Fetch latest measurement for first device
+        const deviceId = devices[0].device_id || devices[0].duid;
+        return fetch(API + '/api/measurements/' + deviceId + '/latest', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+    })
+    .then(r => r ? r.json() : null)
+    .then(data => {
+        const el = document.getElementById('live-cards');
+        if (data && data.temperature_c !== undefined) {
+            el.innerHTML = `
+                <div class="card">
+                    <div class="label">Température</div>
+                    <div class="value">${data.temperature_c}<span class="unit">°C</span></div>
+                </div>
+                <div class="card">
+                    <div class="label">Humidité</div>
+                    <div class="value">${data.humidity_pct}<span class="unit">%</span></div>
+                </div>
+                <div class="card">
+                    <div class="label">Qualité d'air (IAQ)</div>
+                    <div class="value">${data.iaq}</div>
+                </div>
+                <div class="card">
+                    <div class="label">Présence</div>
+                    <div class="value">${data.presence ? '🟢 Oui' : '🔴 Non'}</div>
+                </div>
+            `;
+        } else {
+            el.innerHTML = '<div class="card"><div class="label">Données</div><div class="value">En attente...</div></div>';
+        }
+    })
+    .catch(() => {
+        document.getElementById('live-cards').innerHTML = '<div class="card"><div class="label">Données</div><div class="value">En attente...</div></div>';
+    });
+}
+
+// Auto-login if token exists
+(function() {
+    const token = localStorage.getItem('noisyless_token');
+    if (token) {
+        // Verify token is still valid
+        fetch(API + '/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(r => {
+            if (r.ok) {
+                document.getElementById('login-page').style.display = 'none';
+                document.getElementById('dashboard').classList.add('active');
+                loadDashboard();
+            } else {
+                localStorage.removeItem('noisyless_token');
+            }
+        })
+        .catch(() => localStorage.removeItem('noisyless_token'));
+    }
+})();
+</script>
+</body>
+</html>

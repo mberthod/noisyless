@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Précommande | NOISYLESS HeatMap</title>
+    <meta name="description" content="Précommandez NOISYLESS HeatMap. Capteurs ToF et radar 60 GHz disponibles en livraison Q3 2026.">
+    <link rel="canonical" href="https://noisyless.com/precommande.html">
+    <link rel="alternate" hreflang="fr-FR" href="https://noisyless.com/precommande.html">
+    <link rel="alternate" hreflang="x-default" href="https://noisyless.com/precommande.html">
+    <meta property="og:title" content="Précommande | NOISYLESS HeatMap">
+    <meta property="og:description" content="Précommandez NOISYLESS HeatMap. Capteurs ToF et radar 60 GHz disponibles en livraison Q3 2026.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://noisyless.com/precommande.html">
+    <meta property="og:image" content="https://noisyless.com/assets/logohorizmonochrome.png">
+    <meta property="og:image:alt" content="NOISYLESS — Capteurs intelligents pour l'immobilier">
+    <meta property="og:site_name" content="NOISYLESS">
+    <meta property="og:locale" content="fr_FR">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #FFFFFF; --bg-alt: #F5F5F3; --ink: #1A1A1A; --ink-light: #5A5A5A; --border: #E0E0E0; --signal: #1A61FE; --success: #00A859; --font-display: 'Space Mono', monospace; --font-body: 'IBM Plex Sans', sans-serif; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-body); background: var(--bg); color: var(--ink); line-height: 1.7; }
+        h1, h2, h3, h4 { font-family: var(--font-display); }
+        h1 { font-size: clamp(2rem, 5vw, 3rem); margin-bottom: 1rem; }
+        h2 { font-size: clamp(1.5rem, 3vw, 2rem); margin-bottom: 0.75rem; }
+        h3 { font-size: clamp(1.25rem, 2vw, 1.5rem); margin-bottom: 0.5rem; }
+        p { color: var(--ink-light); margin-bottom: 1rem; max-width: 70ch; }
+        a { color: var(--signal); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+        .section { padding: 80px 0; }
+        .section-alt { background: var(--bg-alt); }
+        header { border-bottom: 1px solid var(--border); padding: 20px 0; position: sticky; top: 0; background: var(--bg); z-index: 100; }
+        .header-inner { display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--ink); }
+        .logo img { height: 32px; }
+        .logo-text { font-family: var(--font-display); font-weight: 700; font-size: 1.125rem; }
+        nav ul { display: flex; list-style: none; gap: 28px; align-items: center; }
+        nav a { color: var(--ink); font-family: var(--font-display); font-size: 0.875rem; border-bottom: 2px solid transparent; padding-bottom: 4px; }
+        nav a:hover { border-bottom-color: var(--signal); text-decoration: none; }
+        .nav-cta { background: var(--signal); color: white !important; padding: 10px 20px; border-radius: 6px; font-weight: 600; }
+        .nav-cta:hover { background: #1550D9; text-decoration: none; }
+        .eyebrow { font-family: var(--font-display); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--signal); margin-bottom: 1rem; display: block; }
+        .btn { display: inline-block; padding: 14px 28px; font-family: var(--font-display); font-weight: 700; background: var(--signal); color: white; border-radius: 6px; border: none; cursor: pointer; }
+        .btn:hover { background: #1550D9; text-decoration: none; }
+        .btn-outline { background: transparent; border: 2px solid var(--signal); color: var(--signal); }
+        .btn-outline:hover { background: var(--signal); color: white; text-decoration: none; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #008F4D; }
+        .mono { font-family: var(--font-display); }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 4px; font-family: var(--font-display); font-size: 0.75rem; font-weight: 600; }
+        .badge-available { background: #D4EDDA; color: #155724; }
+        .badge-soon { background: #FFF3CD; color: #856404; }
+        .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin: 48px 0; }
+        @media (max-width: 900px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 600px) { .cards { grid-template-columns: 1fr; } }
+        .card { padding: 32px; border: 1px solid var(--border); border-radius: 8px; transition: transform 0.2s, box-shadow 0.2s; }
+        .card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+        .card-icon { font-size: 2rem; margin-bottom: 16px; }
+        .card h3 { margin-bottom: 12px; }
+        .card p { font-size: 0.9375rem; margin-bottom: 0; }
+        .cta-band { background: var(--ink); color: white; padding: 80px 0; text-align: center; }
+        .cta-band h2 { color: white; margin-bottom: 16px; }
+        .cta-band p { color: rgba(255,255,255,0.7); margin: 0 auto 32px; }
+        .cta-band .btn { background: var(--signal); color: white; }
+        footer { border-top: 1px solid var(--border); padding: 60px 0 40px; margin-top: 80px; }
+        .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+        @media (max-width: 900px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 600px) { .footer-grid { grid-template-columns: 1fr; } }
+        .footer-brand p { font-size: 0.9rem; color: var(--ink-light); margin-bottom: 20px; }
+        .footer-links h4 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-light); margin-bottom: 16px; font-family: var(--font-display); }
+        .footer-links ul { list-style: none; }
+        .footer-links li { margin-bottom: 12px; }
+        .footer-links a { color: var(--ink); font-size: 0.9rem; }
+        .footer-bottom { display: flex; justify-content: space-between; align-items: center; padding-top: 32px; border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--ink-light); }
+        @media (max-width: 600px) { .footer-bottom { flex-direction: column; gap: 16px; } }
+:root { --bg: #FFFFFF; --bg-alt: #F5F5F3; --ink: #1A1A1A; --ink-light: #5A5A5A; --border: #E0E0E0; --signal: #1A61FE; --font-display: 'Space Mono', monospace; --font-body: 'IBM Plex Sans', sans-serif; }
+        h1, h2, h3 { font-family: var(--font-display); }
+        header { border-bottom: 1px solid var(--border); padding: 24px 0; }
+        .logo-text { font-family: var(--font-display); font-weight: 700; }
+        nav ul { display: flex; list-style: none; gap: 24px; }
+        nav a { color: var(--ink); font-family: var(--font-display); font-size: 0.875rem; }
+        .btn { display: inline-block; padding: 14px 28px; font-family: var(--font-display); font-weight: 700; background: var(--signal); color: white; border-radius: 6px; }
+        .btn:hover { background: #1550D9; }
+        .pricing { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin: 40px 0; }
+        @media (max-width: 768px) { .pricing { grid-template-columns: 1fr; } }
+        .price-card { padding: 32px; border: 1px solid var(--border); border-radius: 8px; text-align: center; }
+        .price-card.featured { border-color: var(--signal); background: var(--bg-alt); }
+        .price-card h3 { font-size: 1.25rem; margin-bottom: 8px; }
+        .price { font-size: 2.5rem; font-family: var(--font-display); font-weight: 700; color: var(--signal); margin: 16px 0; }
+        .price span { font-size: 1rem; color: var(--ink-light); font-weight: 400; }
+        .price-features { text-align: left; margin: 24px 0; }
+        .price-features li { list-style: none; padding: 8px 0; border-bottom: 1px solid var(--border); }
+        .price-features li:last-child { border-bottom: none; }
+        .badge { display: inline-block; padding: 4px 12px; background: var(--signal); color: white; font-family: var(--font-display); font-size: 0.75rem; border-radius: 4px; margin-bottom: 16px; }
+        .timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin: 40px 0; }
+        @media (max-width: 768px) { .timeline { grid-template-columns: 1fr; } }
+        .timeline-step { text-align: center; padding: 24px; }
+        .timeline-number { font-size: 2.5rem; color: var(--signal); font-family: var(--font-display); font-weight: 700; }
+        .form-container { max-width: 600px; margin: 0 auto; }
+        .form-group { margin-bottom: 24px; }
+        .form-group label { display: block; font-family: var(--font-display); font-size: 0.875rem; margin-bottom: 8px; font-weight: 600; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-family: var(--font-body); font-size: 1rem; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--signal); }
+        .cta-band { background: var(--ink); color: white; padding: 60px 0; text-align: center; }
+        .cta-band p { color: rgba(255,255,255,0.7); margin: 0 auto 24px; }
+        .cta-band .btn { background: var(--signal); color: white; border-color: var(--signal); }
+        .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+        @media (max-width: 768px) { .footer-grid { grid-template-columns: 1fr; } }
+    </style>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "NOISYLESS SAS",
+        "url": "https://noisyless.com",
+        "logo": "https://noisyless.com/assets/logohorizmonochrome.png",
+        "description": "Capteurs intelligents pour l'immobilier — détection occupation, bruit, qualité d'air",
+        "email": "contact@noisyless.com",
+        "sameAs": ["https://www.linkedin.com/company/noisyless"]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "NOISYLESS",
+        "url": "https://noisyless.com",
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://noisyless.com/search?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+        }
+    }
+    </script>
+</head>
+<body>
+    <header>
+        <div class="container header-inner">
+            <a href="/" class="logo">
+                <img src="/assets/logohorizmonochrome.png" alt="NOISYLESS">
+                <span class="logo-text">NOISYLESS</span>
+            </a>
+            <nav>
+                <ul>
+                    <li><a href="/#produits">Produits</a></li>
+                    <li><a href="/#fonctionnement">Fonctionnement</a></li>
+                    <li><a href="/faq.html">FAQ</a></li>
+                    <li><a href="/blog/">Blog</a></li>
+                    <li><a href="https://platform.noisyless.com" class="nav-cta">Dashboard</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+<section class="section">
+        <div class="container">
+            <span class="eyebrow">Précommande</span>
+            <h1>HeatMap en early-bird</h1>
+            <p>Livraison Q3 2026. Tarifs préférentiels pour les premiers adoptants. Stock limité.</p>
+        </div>
+    </section>
+
+    <section class="section-alt">
+        <div class="container">
+            <h2>Tarifs early-bird</h2>
+            <p>Réservez maintenant avec un acompte de 10%. Livraison Q3 2026. Prix HT.</p>
+            <div class="pricing">
+                <div class="price-card">
+                    <h3>HeatMap Indoor</h3>
+                    <p class="mono text-sm">Pour intérieur</p>
+                    <div class="price">129 €<span>/HT</span></div>
+                    <ul class="price-features">
+                        <li>✓ Capteur ToF 16×16</li>
+                        <li>✓ Portée 6-8m</li>
+                        <li>✓ Autonomie 12 mois</li>
+                        <li>✓ Fixation adhésive</li>
+                        <li>✓ Dashboard inclus</li>
+                    </ul>
+                    <a href="#form" class="btn">Précommander</a>
+                </div>
+                <div class="price-card featured">
+                    <span class="badge">RECOMMANDÉ</span>
+                    <h3>HeatMap Outdoor</h3>
+                    <p class="mono text-sm">Pour extérieur</p>
+                    <div class="price">179 €<span>/HT</span></div>
+                    <ul class="price-features">
+                        <li>✓ Radar mmWave 60 GHz</li>
+                        <li>✓ IP65 (pluie, nuit, brouillard)</li>
+                        <li>✓ Portée 20m+</li>
+                        <li>✓ Autonomie 12 mois</li>
+                        <li>✓ Dashboard inclus</li>
+                    </ul>
+                    <a href="#form" class="btn">Précommander</a>
+                </div>
+                <div class="price-card">
+                    <h3>Property Pack</h3>
+                    <p class="mono text-sm">Villa complète</p>
+                    <div class="price">Sur devis</div>
+                    <ul class="price-features">
+                        <li>✓ 3× Indoor + 2× Outdoor</li>
+                        <li>✓ Installation incluse</li>
+                        <li>✓ Configuration mesh</li>
+                        <li>✓ Support dédié</li>
+                        <li>✓ Dashboard premium</li>
+                    </ul>
+                    <a href="#form" class="btn">Demander devis</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container">
+            <h2>Calendrier de livraison</h2>
+            <div class="timeline">
+                <div class="timeline-step">
+                    <div class="timeline-number">01</div>
+                    <h3>Précommande</h3>
+                    <p>Maintenant — Juin 2026<br>Acompte 10%</p>
+                </div>
+                <div class="timeline-step">
+                    <div class="timeline-number">02</div>
+                    <h3>Production</h3>
+                    <p>Juin — Août 2026<br>Fabrication des unités</p>
+                </div>
+                <div class="timeline-step">
+                    <div class="timeline-number">03</div>
+                    <h3>Livraison</h3>
+                    <p>Septembre 2026<br>Expédition des commandes</p>
+                </div>
+                <div class="timeline-step">
+                    <div class="timeline-number">04</div>
+                    <h3>Installation</h3>
+                    <p>Octobre 2026<br>Notre technicien installe</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section-alt">
+        <div class="container">
+            <h2>Pourquoi précommander ?</h2>
+            <div class="benefits" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin: 40px 0;">
+                <div class="benefit" style="padding: 24px; border: 1px solid var(--border); border-radius: 8px;">
+                    <h3>Tarif préférentiel</h3>
+                    <p>Les early-bird bénéficient des meilleurs prix. Après Q3 2026, les tarifs augmenteront.</p>
+                </div>
+                <div class="benefit" style="padding: 24px; border: 1px solid var(--border); border-radius: 8px;">
+                    <h3>Livraison prioritaire</h3>
+                    <p>Les précommandes sont livrées en premier. Pas d'attente, pas de liste d'attente.</p>
+                </div>
+                <div class="benefit" style="padding: 24px; border: 1px solid var(--border); border-radius: 8px;">
+                    <h3>Support fondateur</h3>
+                    <p>Accès direct à l'équipe NOISYLESS. Vos feedbacks façonnent le produit.</p>
+                </div>
+                <div class="benefit" style="padding: 24px; border: 1px solid var(--border); border-radius: 8px;">
+                    <h3>Garantie satisfait</h3>
+                    <p>30 jours pour tester. Si ça ne convient pas, remboursement complet de l'acompte.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="form">
+        <div class="container form-container">
+            <h2>Précommander</h2>
+            <form action="https://platform.noisyless.com/api/preorder" method="POST">
+                <div class="form-group">
+                    <label for="name">Nom complet *</label>
+                    <input type="text" id="name" name="name" required placeholder="Jean Dupont">
+                </div>
+                <div class="form-group">
+                    <label for="email">Email *</label>
+                    <input type="email" id="email" name="email" required placeholder="jean@exemple.fr">
+                </div>
+                <div class="form-group">
+                    <label for="phone">Téléphone *</label>
+                    <input type="tel" id="phone" name="phone" required placeholder="06 12 34 56 78">
+                </div>
+                <div class="form-group">
+                    <label for="product">Produit *</label>
+                    <select id="product" name="product" required>
+                        <option value="">Sélectionnez...</option>
+                        <option value="indoor">HeatMap Indoor — 129 € HT</option>
+                        <option value="outdoor">HeatMap Outdoor — 179 € HT</option>
+                        <option value="property">Property Pack — Sur devis</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="quantity">Quantité</label>
+                    <input type="number" id="quantity" name="quantity" min="1" value="1" placeholder="1">
+                </div>
+                <div class="form-group">
+                    <label for="message">Message (optionnel)</label>
+                    <textarea id="message" name="message" placeholder="Questions, besoins spécifiques..."></textarea>
+                </div>
+                <button type="submit" class="btn" style="width: 100%;">Précommander avec 10% d'acompte</button>
+                <p style="font-size: 0.875rem; margin-top: 16px; color: var(--ink-light);">Acompte de 10% requis. Remboursable sous 30 jours. Livraison Q3 2026.</p>
+            </form>
+        </div>
+    </section>
+
+    <div class="cta-band">
+        <div class="container">
+            <h2>Stock limité</h2>
+            <p>Les premières unités sont limitées. Réservez la vôtre maintenant.</p>
+        </div>
+    </div>
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="logo" style="margin-bottom: 16px;">
+                        <img src="/assets/logohorizmonochrome.png" alt="NOISYLESS">
+                    </div>
+                    <p>Capteurs intelligents pour l'immobilier. Détection occupation, bruit, qualité d'air.</p>
+                    <p class="mono" style="font-size: 0.85rem;">NOISYLESS SAS — Périgueux, France</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Produits</h4>
+                    <ul>
+                        <li><a href="/produits/noisyless-simple.html">NOISYLESS Simple</a></li>
+                        <li><a href="/produits/heatmap.html">HeatMap</a></li>
+                        <li><a href="/produits/heatmap-indoor.html">HeatMap Indoor</a></li>
+                        <li><a href="/produits/heatmap-outdoor.html">HeatMap Outdoor</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h4>Ressources</h4>
+                    <ul>
+                        <li><a href="/faq.html">FAQ</a></li>
+                        <li><a href="/blog/">Blog</a></li>
+                        <li><a href="/technologie/intelligence-spatiale.html">Technologie</a></li>
+                        <li><a href="/comparatif/heatmap-vs-camera.html">Comparatifs</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h4>Légal</h4>
+                    <ul>
+                        <li><a href="/mentions-legales.html">Mentions légales</a></li>
+                        <li><a href="/confidentialite.html">Confidentialité</a></li>
+                        <li><a href="/cgv.html">CGV</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <span>© 2026 NOISYLESS SAS. Tous droits réservés.</span>
+                <span class="mono" style="font-size: 0.85rem;">Hébergé en France — RGPD compliant</span>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>
